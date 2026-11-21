@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>한국 수능 부정행위!</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #1b1d24; --panel: #262934; --panel2: #30344a; --line: #3d4258;
+    --text: #f1f1f6; --muted: #9a9fb8; --accent: #ff4d6d; --good: #3ddc97; --warn: #ffc857; --blue: #4cc9f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Sans KR", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: 0; }
+  h1 { font-family: "Black Han Sans", sans-serif; font-weight: 400; }
+
+  header { text-align: center; padding: 18px 16px 8px; }
+  header h1 { font-size: clamp(30px, 6vw, 52px); color: var(--accent); text-shadow: 3px 3px 0 #000; letter-spacing: 1px; }
+  header p { color: var(--muted); font-size: 14px; }
+
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 12px 16px 24px; max-width: 1280px; margin: 0 auto; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 16px; }
+  .panel h2 { font-family: "Black Han Sans", sans-serif; font-weight: 400; font-size: 24px; margin-bottom: 10px; color: var(--warn); }
+
+  /* 부정행위 적기 */
+  .write-row { display: flex; gap: 8px; }
+  .write-row input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); color: var(--text); font-size: 15px; font-family: inherit; }
+  .write-row input:focus { outline: none; border-color: var(--warn); }
+  .btn { padding: 10px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; background: var(--accent); color: #fff; transition: transform .1s, filter .1s; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: scale(.96); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.green { background: var(--good); color: #102; }
+  .btn.yellow { background: var(--warn); color: #221; }
+  .btn.big { width: 100%; padding: 14px; font-size: 18px; margin-top: 12px; }
+  .hint-text { font-size: 12px; color: var(--muted); margin: 8px 0 12px; }
+
+  .cheats { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+  .cheat { background: var(--panel2); border: 2px solid transparent; border-radius: 10px; padding: 10px; cursor: pointer; text-align: left; color: var(--text); }
+  .cheat:hover { border-color: var(--line); }
+  .cheat.sel { border-color: var(--warn); box-shadow: 0 0 0 2px rgba(255,200,87,.25); }
+  .cheat .name { font-weight: 900; font-size: 15px; word-break: break-all; }
+  .cheat .type { font-size: 12px; color: var(--blue); margin: 2px 0 6px; }
+  .bar { height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+  .bar > i { display: block; height: 100%; }
+  .stat { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; margin-top: 4px; }
+
+  /* 시험장 */
+  .main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .hud { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .chip { background: var(--panel); border: 2px solid var(--line); padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+  .chip.danger { border-color: var(--accent); color: var(--accent); }
+  .room-wrap { position: relative; background: var(--panel); border: 2px solid var(--line); border-radius: 14px; overflow: hidden; }
+  canvas#room { display: block; width: 100%; height: auto; }
+
+  .paper { background: #fbf7ea; color: #222; border-radius: 6px; padding: 20px; box-shadow: 0 6px 0 #c9c1a5; position: relative; }
+  .paper .ph { display: flex; justify-content: space-between; font-size: 13px; color: #666; border-bottom: 2px solid #222; padding-bottom: 6px; margin-bottom: 12px; flex-wrap: wrap; gap: 4px; }
+  .paper .q { font-weight: 700; font-size: 17px; margin-bottom: 12px; line-height: 1.5; }
+  .choices { display: grid; gap: 6px; }
+  .choice { text-align: left; background: transparent; padding: 8px 10px; border-radius: 6px; font-size: 15px; color: #222; border: 2px solid transparent; }
+  .choice:hover { background: #efe7cf; }
+  .choice.picked { border-color: #222; background: #efe7cf; }
+  .paper-foot { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+  .cheat-box { background: var(--panel2); border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .cheat-box .now { font-size: 13px; color: var(--muted); }
+  .cheat-box .now b { color: var(--warn); font-size: 15px; }
+  .progress { height: 10px; background: var(--bg); border-radius: 6px; overflow: hidden; margin-top: 10px; display: none; }
+  .progress > i { display: block; height: 100%; width: 0; background: var(--warn); }
+  .result-hint { margin-top: 10px; font-size: 14px; min-height: 20px; font-weight: 700; color: var(--good); }
+
+  .log { font-size: 12px; color: var(--muted); max-height: 110px; overflow-y: auto; margin-top: 10px; line-height: 1.6; }
+
+  /* 영역전개 오버레이 */
+  #domain { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: radial-gradient(circle, #0a1630 0%, #000 70%); }
+  #domain.show { display: grid; animation: domainIn .25s ease-out; }
+  #domain.hide { animation: domainOut .5s ease-in forwards; }
+  #domain .inner { text-align: center; padding: 16px; }
+  #domain img { width: min(70vw, 420px); image-rendering: auto; border-radius: 8px; box-shadow: 0 0 80px #3aa0ff, 0 0 160px #1d4ed8; animation: shake .08s infinite; }
+  #domain .line { font-family: "Black Han Sans", sans-serif; font-size: clamp(28px, 7vw, 64px); color: #fff; text-shadow: 0 0 20px #4cc9f0, 0 0 40px #3a86ff; margin-top: 18px; letter-spacing: 2px; }
+  @keyframes domainIn { from { opacity: 0; transform: scale(1.3); } to { opacity: 1; transform: scale(1); } }
+  @keyframes domainOut { to { opacity: 0; transform: scale(.8); } }
+  @keyframes shake { 0% { transform: translate(1px, -1px); } 50% { transform: translate(-2px, 1px); } 100% { transform: translate(1px, 2px); } }
+
+  /* 결과 모달 */
+  .modal { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.7); display: none; place-items: center; padding: 16px; }
+  .modal.show { display: grid; }
+  .modal .box { background: var(--panel); border: 3px solid var(--accent); border-radius: 16px; padding: 28px; max-width: 420px; width: 100%; text-align: center; }
+  .modal h2 { font-family: "Black Han Sans", sans-serif; font-weight: 400; font-size: 36px; color: var(--accent); margin-bottom: 8px; }
+  .modal p { color: var(--muted); margin-bottom: 6px; }
+  .grade { font-family: "Black Han Sans", sans-serif; font-size: 64px; color: var(--warn); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>한국 수능 부정행위!</h1>
+  <p>세상에 있는 아무거나로 부정행위를 하세요. 단, 감독관에게 들키면… 가루가 됩니다.</p>
+</header>
+
+<div class="layout">
+  <!-- 왼쪽: 부정행위 적기 -->
+  <aside class="panel">
+    <h2>✏️ 부정행위 적기!</h2>
+    <div class="write-row">
+      <input id="cheatInput" maxlength="20" placeholder="예) 스마트워치, 지우개, 비둘기…" />
+      <button class="btn yellow" id="addCheat">추가</button>
+    </div>
+    <p class="hint-text">아무거나 적으면 그걸로 부정행위를 할 수 있어요. 적은 것마다 성공률·위험도가 달라요!</p>
+    <div class="cheats" id="cheatList"></div>
+
+    <div id="lobbyBox">
+      <button class="btn big" id="startBtn" disabled>📝 시험 시작</button>
+    </div>
+
+    <div class="cheat-box hidden" id="cheatBox">
+      <div class="now">사용 중: <b id="curCheat">-</b></div>
+      <button class="btn big" id="doCheat">🤫 부정행위 하기!</button>
+      <div class="progress" id="cheatProg"><i></i></div>
+      <div class="result-hint" id="cheatResult"></div>
+      <div class="log" id="log"></div>
+    </div>
+  </aside>
+
+  <!-- 오른쪽: 시험장 -->
+  <section class="main">
+    <div class="hud">
+      <span class="chip" id="qNum">대기 중</span>
+      <span class="chip" id="timer">⏱ --</span>
+      <span class="chip" id="alive">👥 생존 12명</span>
+      <span class="chip danger" id="sus">👀 의심도 0%</span>
+    </div>
+    <div class="room-wrap"><canvas id="room" width="900" height="420"></canvas></div>
+
+    <div class="paper" id="paper">
+      <div class="ph">
+        <span>2027학년도 대학수학능력시험 · 부정행위 영역</span>
+        <span id="paperId">수험번호 ----</span>
+      </div>
+      <div class="q" id="qText">왼쪽에서 부정행위 방법을 적고 고른 뒤 <b>시험 시작</b>을 누르세요.<br/>※ 시험지는 학생마다 보기 순서가 달라서 정답 번호도 사람마다 다릅니다.</div>
+      <div class="choices" id="choices"></div>
+      <div class="paper-foot">
+        <button class="btn green hidden" id="submitBtn">답 제출 ➜</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 영역전개 -->
+<div id="domain">
+  <div class="inner">
+    <img src="domain.png" alt="" />
+    <div class="line">"료이키 텐카이 무량공처!"</div>
+  </div>
+</div>
+
+<!-- 결과 -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h2 id="mTitle">시험 종료</h2>
+    <div class="grade" id="mGrade"></div>
+    <p id="mDesc"></p>
+    <button class="btn big" id="retry">다시 하기</button>
+  </div>
+</div>
+
+<script>
+// ===== 유틸 =====
+const $ = (id) => document.getElementById(id);
+function hash(str) { let h = 2166136261; for (const c of str) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, r) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const NUM = ["①", "②", "③", "④", "⑤"];
+
+// ===== 문제 은행 =====
+const BANK = [
+  { q: "다음 중 대한민국의 수도는?", a: "서울", w: ["부산", "평양", "도쿄", "세종대왕"] },
+  { q: "7 × 8 = ?", a: "56", w: ["54", "48", "63", "78"] },
+  { q: "물의 화학식은?", a: "H₂O", w: ["CO₂", "O₂", "NaCl", "H₂O₂"] },
+  { q: "'훈민정음'을 만든 왕은?", a: "세종대왕", w: ["태조", "광개토대왕", "정조", "선덕여왕"] },
+  { q: "빛의 삼원색이 아닌 것은?", a: "노랑", w: ["빨강", "초록", "파랑", "(전부 삼원색)"] },
+  { q: "1년은 보통 며칠인가?", a: "365일", w: ["360일", "366일", "300일", "100일"] },
+  { q: "'apple'의 뜻은?", a: "사과", w: ["배", "포도", "바나나", "감자"] },
+  { q: "지구에서 가장 큰 바다는?", a: "태평양", w: ["대서양", "인도양", "북극해", "동해"] },
+  { q: "√144 = ?", a: "12", w: ["14", "11", "72", "24"] },
+  { q: "삼각형 내각의 합은?", a: "180°", w: ["90°", "360°", "270°", "120°"] },
+  { q: "임진왜란이 일어난 해는?", a: "1592년", w: ["1392년", "1950년", "1910년", "1636년"] },
+  { q: "광합성에 필요하지 않은 것은?", a: "산소", w: ["빛", "물", "이산화탄소", "엽록소"] },
+  { q: "2의 10제곱은?", a: "1024", w: ["1000", "512", "2048", "100"] },
+  { q: "태양계에서 가장 큰 행성은?", a: "목성", w: ["토성", "지구", "화성", "태양"] },
+  { q: "수능 시험장에 가져가면 안 되는 것은?", a: "스마트폰", w: ["컴퓨터용 사인펜", "수험표", "신분증", "아날로그 시계"] },
+];
+const TOTAL_Q = 10;
+const TIME_LIMIT = 120;
+
+// ===== 부정행위 아이템 =====
+const COPY_WORDS = ["옆", "짝", "친구", "앞사람", "뒷사람", "커닝", "베끼"];
+function makeCheat(name) {
+  const r = rng(hash(name));
+  const copy = COPY_WORDS.some((w) => name.includes(w));
+  const types = ["전자기기형", "아날로그형", "초자연형", "물리형", "정신력형", "동물형"];
+  return {
+    name,
+    copy,
+    type: copy ? "옆사람 베끼기형 (시험지가 다르다는 걸 잊었나?)" : types[Math.floor(r() * types.length)],
+    success: copy ? 90 : Math.round(35 + r() * 60), // 정답이 맞을 확률
+    risk: Math.round(10 + r() * 55),                // 들킬 확률
+  };
+}
+let cheats = ["스마트워치", "손바닥 필기", "옆자리 친구"].map(makeCheat);
+let selected = 0;
+
+function renderCheats() {
+  const list = $("cheatList");
+  list.innerHTML = "";
+  cheats.forEach((c, i) => {
+    const el = document.createElement("button");
+    el.className = "cheat" + (i === selected ? " sel" : "");
+    el.innerHTML = `
+      <div class="name"></div>
+      <div class="type">${c.type}</div>
+      <div class="stat"><span>성공률</span><span>${c.success}%</span></div>
+      <div class="bar"><i style="width:${c.success}%;background:var(--good)"></i></div>
+      <div class="stat"><span>들킬 확률</span><span>${c.risk}%</span></div>
+      <div class="bar"><i style="width:${c.risk}%;background:var(--accent)"></i></div>`;
+    el.querySelector(".name").textContent = c.name;
+    el.onclick = () => { selected = i; renderCheats(); updateCurCheat(); };
+    list.appendChild(el);
+  });
+  $("startBtn").disabled = cheats.length === 0;
+}
+function addCheat() {
+  const v = $("cheatInput").value.trim();
+  if (!v) return;
+  if (!cheats.some((c) => c.name === v)) cheats.unshift(makeCheat(v));
+  selected = cheats.findIndex((c) => c.name === v);
+  $("cheatInput").value = "";
+  renderCheats(); updateCurCheat();
+}
+$("addCheat").onclick = addCheat;
+$("cheatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addCheat(); });
+function updateCurCheat() { $("curCheat").textContent = cheats[selected] ? cheats[selected].name : "-"; }
+
+// ===== 교실 / 캔버스 =====
+const cv = $("room"), ctx = cv.getContext("2d");
+const W = cv.width, H = cv.height;
+const COLS = 4, ROWS = 3, PLAYER = 6; // 플레이어 자리 인덱스
+const HAIRS = ["#2b1d14", "#111", "#5a3a22", "#1d1d2b", "#3b2a1a", "#702c1a"];
+const SHIRTS = ["#4c6ef5", "#e8590c", "#2f9e44", "#ae3ec9", "#f08c00", "#1098ad", "#c92a2a", "#5c7cfa"];
+let students = [];
+let teacher;
+let particles = [];
+let bubble = null;
+
+function setupRoom() {
+  students = [];
+  const sx = 170, sy = 110, gx = 180, gy = 105;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const i = r * COLS + c;
+    students.push({
+      i, x: sx + c * gx, y: sy + r * gy,
+      hair: HAIRS[(i * 7) % HAIRS.length], shirt: SHIRTS[(i * 5) % SHIRTS.length],
+      alive: true, cheating: 0, isPlayer: i === PLAYER, seed: 1000 + i * 97 + Math.floor(Math.random() * 9999),
+      name: i === PLAYER ? "나" : `${i + 1}번`,
+    });
+  }
+  teacher = { x: 80, y: 60, angle: 0, target: null, wait: 0, speed: 1.3, look: 0 };
+}
+
+function drawStudent(s, t) {
+  if (!s.alive) return;
+  const { x, y } = s;
+  // 책상
+  ctx.fillStyle = "#8d6e4f"; ctx.fillRect(x - 40, y + 8, 80, 34);
+  ctx.fillStyle = "#6f5439"; ctx.fillRect(x - 40, y + 38, 80, 6);
+  ctx.fillStyle = "#fbf7ea"; ctx.fillRect(x - 16, y + 14, 32, 22);
+  // 몸
+  const bob = s.cheating > 0 ? Math.sin(t / 60) * 2 : 0;
+  ctx.fillStyle = s.shirt; ctx.beginPath(); ctx.roundRect(x - 20, y - 8 + bob, 40, 26, 8); ctx.fill();
+  // 머리
+  ctx.fillStyle = "#f3d2b3"; ctx.beginPath(); ctx.arc(x, y - 22 + bob, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = s.hair; ctx.beginPath(); ctx.arc(x, y - 26 + bob, 16, Math.PI, Math.PI * 2); ctx.fill();
+  // 눈
+  ctx.fillStyle = "#222";
+  const ex = s.cheating > 0 ? 4 : 0;
+  ctx.fillRect(x - 7 + ex, y - 22 + bob, 3, 3); ctx.fillRect(x + 4 + ex, y - 22 + bob, 3, 3);
+  // 부정행위 중 표시
+  if (s.cheating > 0) { ctx.fillStyle = "#ffc857"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center"; ctx.fillText("💦", x + 24, y - 34); }
+  // 이름표
+  ctx.font = "bold 13px 'Noto Sans KR', sans-serif"; ctx.textAlign = "center";
+  if (s.isPlayer) {
+    ctx.fillStyle = "#ffc857"; ctx.fillText("▼ 나", x, y - 46 + bob);
+  } else { ctx.fillStyle = "#9a9fb8"; ctx.fillText(s.name, x, y + 58); }
+}
+
+function drawTeacher() {
+  const { x, y, angle } = teacher;
+  // 시야
+  const grad = ctx.createRadialGradient(x, y, 10, x, y, 260);
+  grad.addColorStop(0, "rgba(255,77,109,.35)"); grad.addColorStop(1, "rgba(255,77,109,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, 260, angle - 0.55, angle + 0.55); ctx.closePath(); ctx.fill();
+  // 몸
+  ctx.fillStyle = "#33384d"; ctx.beginPath(); ctx.roundRect(x - 18, y - 4, 36, 34, 8); ctx.fill();
+  ctx.fillStyle = "#f3d2b3"; ctx.beginPath(); ctx.arc(x, y - 16, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ddd"; ctx.beginPath(); ctx.arc(x, y - 20, 15, Math.PI, Math.PI * 2); ctx.fill();
+  // 안경
+  ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
+  const lx = Math.cos(angle) * 4, ly = Math.sin(angle) * 3;
+  ctx.strokeRect(x - 10 + lx, y - 18 + ly, 8, 6); ctx.strokeRect(x + 2 + lx, y - 18 + ly, 8, 6);
+  ctx.font = "bold 12px 'Noto Sans KR', sans-serif"; ctx.fillStyle = "#ff8fa3"; ctx.textAlign = "center";
+  ctx.fillText("감독관", x, y + 46);
+}
+
+function drawRoom(t) {
+  ctx.fillStyle = "#2c3140"; ctx.fillRect(0, 0, W, H);
+  // 바닥 타일
+  ctx.strokeStyle = "rgba(255,255,255,.04)"; ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
+  for (let i = 0; i < H; i += 40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); }
+  // 칠판
+  ctx.fillStyle = "#1f4d3a"; ctx.fillRect(250, 6, 400, 34);
+  ctx.fillStyle = "#e9f5ee"; ctx.font = "bold 16px 'Noto Sans KR', sans-serif"; ctx.textAlign = "center";
+  ctx.fillText("부정행위 적발 시 가루 처리", 450, 29);
+  students.forEach((s) => drawStudent(s, t));
+  drawTeacher();
+  // 파티클 (가루)
+  particles.forEach((p) => { ctx.globalAlpha = Math.max(p.life, 0); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, p.s, p.s); });
+  ctx.globalAlpha = 1;
+  // 말풍선
+  if (bubble) {
+    ctx.font = "bold 16px 'Noto Sans KR', sans-serif";
+    const tw = ctx.measureText(bubble.text).width + 20;
+    let bx = Math.min(Math.max(teacher.x - tw / 2, 4), W - tw - 4), by = Math.max(teacher.y - 80, 4);
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(bx, by, tw, 32, 10); ctx.fill();
+    ctx.fillStyle = "#c9184a"; ctx.textAlign = "left"; ctx.fillText(bubble.text, bx + 10, by + 22);
+  }
+}
+
+// ===== 가루 효과 =====
+function dust(s) {
+  const x0 = Math.round(s.x - 42), y0 = Math.round(s.y - 50), w = 84, h = 100;
+  const img = ctx.getImageData(x0, y0, w, h).data;
+  for (let yy = 0; yy < h; yy += 3) for (let xx = 0; xx < w; xx += 3) {
+    const k = (yy * w + xx) * 4;
+    const rr = img[k], gg = img[k + 1], bb = img[k + 2];
+    if (Math.abs(rr - 44) + Math.abs(gg - 49) + Math.abs(bb - 64) < 30) continue; // 배경 제외
+    particles.push({
+      x: x0 + xx, y: y0 + yy, s: 3, c: `rgb(${rr},${gg},${bb})`,
+      vx: 0.6 + Math.random() * 2.2, vy: -0.6 - Math.random() * 1.4,
+      delay: (xx / w) * 30 + Math.random() * 20, life: 1,
+    });
+  }
+  s.alive = false;
+}
+function updateParticles() {
+  particles.forEach((p) => {
+    if (p.delay > 0) { p.delay--; return; }
+    p.x += p.vx; p.y += p.vy; p.vy -= 0.01; p.vx += (Math.random() - 0.4) * 0.2; p.life -= 0.012;
+  });
+  particles = particles.filter((p) => p.life > 0);
+}
+
+// ===== 감독관 AI =====
+function teacherSees(s) {
+  const dx = s.x - teacher.x, dy = s.y - teacher.y;
+  const d = Math.hypot(dx, dy);
+  if (d > 260) return false;
+  let diff = Math.atan2(dy, dx) - teacher.angle;
+  diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+  return Math.abs(diff) < 0.55;
+}
+function updateTeacher() {
+  if (state !== "exam" || freeze) return;
+  if (teacher.wait > 0) {
+    teacher.wait--;
+    teacher.angle += Math.sin(Date.now() / 400) * 0.03;
+  } else {
+    if (!teacher.target) {
+      teacher.target = { x: 60 + Math.random() * (W - 120), y: 50 + Math.random() * (H - 90) };
+      // 가끔 의심 가는 학생 쪽으로
+      if (Math.random() < suspicion / 150) teacher.target = { x: students[PLAYER].x + 60, y: students[PLAYER].y - 50 };
+    }
+    const dx = teacher.target.x - teacher.x, dy = teacher.target.y - teacher.y, d = Math.hypot(dx, dy);
+    const want = Math.atan2(dy, dx);
+    let diff = Math.atan2(Math.sin(want - teacher.angle), Math.cos(want - teacher.angle));
+    teacher.angle += diff * 0.08;
+    if (d < 3) { teacher.target = null; teacher.wait = 50 + Math.random() * 90; teacher.angle = Math.random() * Math.PI * 2; }
+    else { teacher.x += (dx / d) * teacher.speed; teacher.y += (dy / d) * teacher.speed; }
+  }
+  // 부정행위 중인 학생 감시
+  students.forEach((s) => {
+    if (!s.alive || s.cheating <= 0) return;
+    if (teacherSees(s)) catchStudent(s);
+  });
+}
+
+// ===== NPC 부정행위 =====
+function updateNPC() {
+  if (state !== "exam" || freeze) return;
+  students.forEach((s) => {
+    if (s.isPlayer || !s.alive) return;
+    if (s.cheating > 0) { s.cheating--; return; }
+    if (Math.random() < 0.0018) s.cheating = 70 + Math.random() * 60;
+  });
+}
+
+// ===== 적발 =====
+let freeze = false;
+function catchStudent(s) {
+  if (freeze || !s.alive) return;
+  freeze = true;
+  s.cheating = 0;
+  teacher.angle = Math.atan2(s.y - teacher.y, s.x - teacher.x);
+  bubble = { text: "료이키 텐카이 무량공처!" };
+  log(`🚨 ${s.isPlayer ? "내가" : s.name + " 학생이"} 적발됨!`);
+  const d = $("domain");
+  d.classList.remove("hide"); d.classList.add("show");
+  setTimeout(() => d.classList.add("hide"), 1500);
+  setTimeout(() => {
+    d.classList.remove("show", "hide");
+    dust(s);
+    bubble = null;
+    updateAlive();
+    setTimeout(() => {
+      freeze = false;
+      if (s.isPlayer) endGame(true);
+    }, s.isPlayer ? 1800 : 300);
+  }, 2000);
+  if (s.isPlayer) { cheatingNow = false; $("cheatProg").style.display = "none"; }
+}
+
+// ===== 시험 진행 =====
+let state = "lobby", questions = [], qi = 0, picked = -1, answers = [], timeLeft = TIME_LIMIT, timerId;
+let suspicion = 0, cheatingNow = false;
+
+function paperFor(student, q) {
+  // 학생마다 다른 보기 순서 → 정답 번호가 사람마다 다름
+  const r = rng(student.seed + hash(q.q));
+  const opts = shuffle([q.a, ...q.w], r);
+  return { opts, correct: opts.indexOf(q.a) };
+}
+
+function startExam() {
+  if (!cheats.length) return;
+  setupRoom();
+  state = "exam"; qi = 0; answers = []; suspicion = 0; particles = []; freeze = false; cheatingNow = false;
+  questions = shuffle(BANK, Math.random).slice(0, TOTAL_Q);
+  timeLeft = TIME_LIMIT;
+  $("lobbyBox").classList.add("hidden"); $("cheatBox").classList.remove("hidden");
+  $("submitBtn").classList.remove("hidden");
+  $("log").innerHTML = ""; $("cheatResult").textContent = "";
+  $("paperId").textContent = "수험번호 " + String(students[PLAYER].seed).padStart(6, "0");
+  updateCurCheat(); updateSus(); updateAlive(); showQ();
+  clearInterval(timerId);
+  timerId = setInterval(() => {
+    if (state !== "exam" || freeze) return;
+    timeLeft--; $("timer").textContent = `⏱ ${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`;
+    if (timeLeft <= 0) endGame(false);
+  }, 1000);
+}
+
+function showQ() {
+  const q = questions[qi];
+  const p = paperFor(students[PLAYER], q);
+  picked = -1;
+  $("qNum").textContent = `문제 ${qi + 1} / ${TOTAL_Q}`;
+  $("qText").textContent = `${qi + 1}. ${q.q}`;
+  const box = $("choices"); box.innerHTML = "";
+  p.opts.forEach((o, i) => {
+    const b = document.createElement("button");
+    b.className = "choice"; b.textContent = `${NUM[i]} ${o}`;
+    b.onclick = () => { picked = i; [...box.children].forEach((c, j) => c.classList.toggle("picked", j === i)); };
+    box.appendChild(b);
+  });
+  $("cheatResult").textContent = "";
+}
+
+$("submitBtn").onclick = () => {
+  if (state !== "exam" || freeze) return;
+  if (picked < 0) { $("cheatResult").style.color = "var(--warn)"; $("cheatResult").textContent = "답을 골라주세요!"; return; }
+  const p = paperFor(students[PLAYER], questions[qi]);
+  answers.push(picked === p.correct);
+  qi++;
+  if (qi >= TOTAL_Q) endGame(false); else showQ();
+};
+
+// ===== 플레이어 부정행위 =====
+$("doCheat").onclick = () => {
+  if (state !== "exam" || freeze || cheatingNow) return;
+  const c = cheats[selected];
+  const me = students[PLAYER];
+  cheatingNow = true;
+  me.cheating = 9999;
+  const prog = $("cheatProg"), bar = prog.firstElementChild;
+  prog.style.display = "block"; bar.style.width = "0";
+  $("cheatResult").style.color = "var(--muted)";
+  $("cheatResult").textContent = `${c.name}(으)로 부정행위 중…`;
+  let t = 0;
+  const dur = 90; // 프레임
+  const step = () => {
+    if (!cheatingNow) { me.cheating = 0; return; }
+    if (freeze) { requestAnimationFrame(step); return; }
+    t++; bar.style.width = (t / dur * 100) + "%";
+    if (t < dur) { requestAnimationFrame(step); return; }
+    // 끝
+    cheatingNow = false; me.cheating = 0; prog.style.display = "none";
+    suspicion = Math.min(100, suspicion + Math.round(c.risk / 3));
+    updateSus();
+    if (Math.random() * 100 < c.risk * (0.4 + suspicion / 150)) { catchStudent(me); return; }
+    giveHint(c);
+  };
+  requestAnimationFrame(step);
+};
+
+function giveHint(c) {
+  const q = questions[qi];
+  const mine = paperFor(students[PLAYER], q);
+  const res = $("cheatResult");
+  res.style.color = "var(--good)";
+  if (c.copy) {
+    const nb = students.filter((s) => !s.isPlayer && s.alive && Math.abs(s.x - students[PLAYER].x) < 200 && Math.abs(s.y - students[PLAYER].y) < 120);
+    const n = nb[Math.floor(Math.random() * nb.length)];
+    if (!n) { res.textContent = "주변에 살아있는 친구가 없다…"; return; }
+    const theirs = paperFor(n, q);
+    res.textContent = `👀 ${n.name} 학생 답: ${NUM[theirs.correct]}번 (근데 시험지가 다른데…?)`;
+    log(`${c.name}: ${n.name} 답 ${NUM[theirs.correct]} 훔쳐봄`);
+    return;
+  }
+  const ok = Math.random() * 100 < c.success;
+  const ans = ok ? mine.correct : [0, 1, 2, 3, 4].filter((i) => i !== mine.correct)[Math.floor(Math.random() * 4)];
+  res.textContent = `✨ ${c.name}이(가) 알려줌: 정답은 ${NUM[ans]}번인 것 같다!`;
+  log(`${c.name} 사용 → ${NUM[ans]}번 ${ok ? "" : "(?)"}`);
+}
+
+function log(t) { const l = $("log"); l.innerHTML = `<div>${t.replace(/</g, "&lt;")}</div>` + l.innerHTML; }
+function updateSus() { $("sus").textContent = `👀 의심도 ${suspicion}%`; }
+function updateAlive() { $("alive").textContent = `👥 생존 ${students.filter((s) => s.alive).length}명`; }
+
+// ===== 종료 =====
+function endGame(caught) {
+  if (state !== "exam") return;
+  state = "end"; clearInterval(timerId); cheatingNow = false;
+  const score = answers.filter(Boolean).length;
+  if (caught) {
+    $("mTitle").textContent = "당신은 가루가 되었습니다";
+    $("mGrade").textContent = "💀";
+    $("mDesc").textContent = `감독관에게 적발! (푼 문제 ${answers.length}개 중 ${score}개 정답이었음)`;
+  } else {
+    const grade = score >= 10 ? 1 : score >= 9 ? 2 : score >= 8 ? 3 : score >= 7 ? 4 : score >= 6 ? 5 : score >= 5 ? 6 : score >= 4 ? 7 : score >= 2 ? 8 : 9;
+    $("mTitle").textContent = timeLeft <= 0 ? "시간 종료!" : "시험 종료!";
+    $("mGrade").textContent = `${grade}등급`;
+    const dead = students.filter((s) => !s.alive).length;
+    $("mDesc").textContent = `${TOTAL_Q}문제 중 ${score}개 정답 · 가루가 된 친구 ${dead}명`;
+  }
+  $("modal").classList.add("show");
+}
+$("retry").onclick = () => {
+  $("modal").classList.remove("show");
+  state = "lobby";
+  $("lobbyBox").classList.remove("hidden"); $("cheatBox").classList.add("hidden");
+  $("submitBtn").classList.add("hidden"); $("choices").innerHTML = "";
+  $("qText").innerHTML = "부정행위 방법을 고르고 <b>시험 시작</b>을 누르세요.";
+  $("qNum").textContent = "대기 중"; $("timer").textContent = "⏱ --"; $("cheatResult").textContent = "";
+  setupRoom(); updateAlive(); suspicion = 0; updateSus();
+};
+$("startBtn").onclick = startExam;
+
+// ===== 루프 =====
+function loop(t) {
+  updateTeacher(); updateNPC(); updateParticles();
+  drawRoom(t);
+  requestAnimationFrame(loop);
+}
+setupRoom(); renderCheats(); updateCurCheat();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
