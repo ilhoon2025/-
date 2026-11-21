@@ -265,7 +265,7 @@ end
 local function spawnCar(lane)
 	local m = buildCar(CAR_COLORS[math.random(1, #CAR_COLORS)])
 	local z = -lane.dir * ROAD_LEN / 2
-	local car = { model = m, lane = lane, z = z, speed = math.random(40, 75) }
+	local car = { model = m, lane = lane, z = z, speed = math.random(90, 140) }
 	m:PivotTo(CFrame.new(lane.x, 0, z) * CFrame.Angles(0, lane.dir == 1 and math.pi or 0, 0))
 	m.Parent = carFolder
 	table.insert(cars, car)
@@ -833,11 +833,13 @@ local function finishCheat(player, s)
 	local qIndex = s.questions[s.qi]
 	local _, mine = Shared.paperFor(s.seed, qIndex)
 	local msg
+	local view = {}
 	if s.cheat.copy then
 		local n = nearestNeighbor(s.desk)
 		if n then
 			local _, theirs = Shared.paperFor(seedOf(n), qIndex)
 			msg = n .. "번 자리 답안: " .. Shared.NUM[theirs] .. "번  (시험지 유형이 다를 수 있음)"
+			view = { ans = theirs, seat = n, q = s.qi }
 		else
 			msg = "주변에 다른 수험생이 없다."
 		end
@@ -849,9 +851,10 @@ local function finishCheat(player, s)
 			until ans ~= mine
 		end
 		msg = "[" .. s.cheatShown .. "] 정답은 " .. Shared.NUM[ans] .. "번인 것 같다"
+		view = { ans = ans, item = s.cheatShown, q = s.qi }
 	end
 	s.luck = 0
-	remote:FireClient(player, "Hint", msg)
+	remote:FireClient(player, "Hint", msg, view)
 end
 
 -------------------------------------------------------------------
@@ -873,7 +876,7 @@ local function updateCars(dt)
 		lane.next = lane.next - dt
 		if lane.next <= 0 then
 			spawnCar(lane)
-			lane.next = 1.5 + math.random() * 3
+			lane.next = 0.8 + math.random() * 2
 		end
 	end
 	for i = #cars, 1, -1 do

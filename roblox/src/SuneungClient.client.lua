@@ -258,6 +258,156 @@ local function toast(msg)
 end
 
 -------------------------------------------------------------------
+-- 부정행위 물건 화면 (스마트워치면 스마트워치 화면에 정답이 뜸)
+-------------------------------------------------------------------
+local KINDS = {
+	{ kind = "watch", words = { "워치", "시계", "watch" } },
+	{ kind = "phone", words = { "폰", "핸드폰", "휴대폰", "아이패드", "태블릿", "phone" } },
+	{ kind = "calc", words = { "계산기" } },
+	{ kind = "palm", words = { "손바닥", "손", "팔" } },
+	{ kind = "eraser", words = { "지우개" } },
+	{ kind = "note", words = { "쪽지", "메모", "종이", "커닝페이퍼", "포스트잇", "필기" } },
+}
+local function kindOf(name, isCopy)
+	if isCopy then
+		return "neighbor"
+	end
+	for _, k in ipairs(KINDS) do
+		for _, w in ipairs(k.words) do
+			if string.find(string.lower(name), w, 1, true) then
+				return k.kind
+			end
+		end
+	end
+	return "generic"
+end
+
+local viewHolder = new("Frame", { Parent = root, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromOffset(320, 400), Position = UDim2.new(0.5, 0, 1, 420), ZIndex = 20 })
+local viewId = 0
+
+local function z(o, n)
+	o.ZIndex = n
+	return o
+end
+local function rect(parent, color, size, pos, r, zi, props)
+	props = props or {}
+	props.Parent = parent
+	props.BackgroundColor3 = color
+	props.Size = size
+	props.Position = pos
+	props.AnchorPoint = props.AnchorPoint or Vector2.new(0.5, 0.5)
+	props.ZIndex = zi or 21
+	props.BorderSizePixel = 0
+	local f = new("Frame", props)
+	if r then
+		corner(r).Parent = f
+	end
+	return f
+end
+local function txt(parent, str, size, color, pos, zi, font, sz)
+	return text({ Parent = parent, Text = str, TextSize = size, TextColor3 = color, Font = font or F.bold, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Position = pos, Size = sz or UDim2.new(1, -20, 0, size + 8), ZIndex = zi or 25 })
+end
+
+local function buildView(kind, name, ans, extra)
+	local h = viewHolder
+	for _, ch in ipairs(h:GetChildren()) do
+		ch:Destroy()
+	end
+	local num = Shared.NUM[ans] or "?"
+	local qn = extra.q or 0
+	local center = UDim2.fromScale(0.5, 0.5)
+	if kind == "watch" then
+		rect(h, Color3.fromRGB(40, 42, 48), UDim2.fromOffset(120, 400), center, 24, 21)
+		local case = rect(h, Color3.fromRGB(70, 72, 80), UDim2.fromOffset(230, 250), center, 60, 22)
+		rect(case, Color3.fromRGB(90, 92, 100), UDim2.fromOffset(14, 46), UDim2.new(1, 4, 0.4, 0), 6, 21)
+		local screen = rect(case, Color3.fromRGB(5, 5, 8), UDim2.new(1, -24, 1, -24), center, 50, 23)
+		txt(screen, os.date("%H:%M"), 16, Color3.fromRGB(160, 160, 170), UDim2.fromScale(0.5, 0.17), 25, F.mid)
+		txt(screen, qn .. "번 정답", 14, Color3.fromRGB(120, 200, 255), UDim2.fromScale(0.5, 0.32), 25, F.mid)
+		txt(screen, num, 84, Color3.fromRGB(120, 255, 170), UDim2.fromScale(0.5, 0.62), 25, F.bold, UDim2.new(1, 0, 0, 90))
+		rect(screen, Color3.fromRGB(120, 255, 170), UDim2.fromOffset(60, 4), UDim2.fromScale(0.5, 0.88), 2, 25)
+	elseif kind == "phone" then
+		local body = rect(h, Color3.fromRGB(20, 20, 24), UDim2.fromOffset(210, 390), center, 32, 21)
+		local screen = rect(body, Color3.fromRGB(28, 44, 80), UDim2.new(1, -16, 1, -16), center, 26, 22)
+		rect(screen, Color3.fromRGB(10, 10, 12), UDim2.fromOffset(70, 18), UDim2.new(0.5, 0, 0, 16), 9, 23)
+		txt(screen, os.date("%H:%M"), 40, Color3.new(1, 1, 1), UDim2.fromScale(0.5, 0.2), 24, F.bold)
+		local bubble = rect(screen, Color3.fromRGB(245, 245, 248), UDim2.new(1, -24, 0, 110), UDim2.fromScale(0.5, 0.55), 16, 24)
+		text({ Parent = bubble, Text = "메시지 · 지금", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, -24, 0, 16), Position = UDim2.fromOffset(12, 10), ZIndex = 25 })
+		text({ Parent = bubble, Text = "답 알려줄게", Font = F.bold, TextSize = 14, Size = UDim2.new(1, -24, 0, 18), Position = UDim2.fromOffset(12, 30), ZIndex = 25 })
+		text({ Parent = bubble, Text = qn .. "번 정답 " .. num, Font = F.bold, TextSize = 26, TextColor3 = C.accent, Size = UDim2.new(1, -24, 0, 34), Position = UDim2.fromOffset(12, 56), ZIndex = 25 })
+	elseif kind == "calc" then
+		local body = rect(h, Color3.fromRGB(50, 52, 58), UDim2.fromOffset(220, 340), center, 18, 21)
+		local disp = rect(body, Color3.fromRGB(170, 190, 150), UDim2.new(1, -30, 0, 80), UDim2.new(0.5, 0, 0, 60), 6, 22)
+		text({ Parent = disp, Text = qn .. "번=" .. ans, Font = Enum.Font.Code, TextSize = 40, TextColor3 = Color3.fromRGB(30, 40, 30), TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -16, 1, 0), Position = UDim2.fromOffset(8, 0), ZIndex = 23 })
+		for r = 0, 3 do
+			for c = 0, 3 do
+				local k = rect(body, Color3.fromRGB(90, 92, 100), UDim2.fromOffset(38, 34), UDim2.new(0, 38 + c * 48, 0, 140 + r * 46), 6, 22)
+				k.AnchorPoint = Vector2.new(0.5, 0.5)
+			end
+		end
+	elseif kind == "palm" then
+		local skin = Color3.fromRGB(240, 200, 170)
+		for i2, off in ipairs({ -66, -22, 22, 66 }) do
+			rect(h, skin, UDim2.fromOffset(40, 130 + ((i2 == 2 or i2 == 3) and 20 or 0)), UDim2.new(0.5, off, 0.5, -150), 20, 21)
+		end
+		rect(h, skin, UDim2.fromOffset(40, 120), UDim2.new(0.5, -120, 0.5, 10), 20, 21).Rotation = -35
+		local palm = rect(h, skin, UDim2.fromOffset(200, 230), UDim2.new(0.5, 0, 0.5, 20), 90, 22)
+		local ink = txt(palm, qn .. "번 " .. num, 44, Color3.fromRGB(30, 60, 170), UDim2.fromScale(0.5, 0.45), 24, F.bold, UDim2.new(1, 0, 0, 60))
+		ink.Rotation = -8
+		local ink2 = txt(palm, "정답!!", 22, Color3.fromRGB(30, 60, 170), UDim2.fromScale(0.5, 0.7), 24, F.mid)
+		ink2.Rotation = -6
+	elseif kind == "eraser" then
+		local e = rect(h, Color3.fromRGB(250, 250, 250), UDim2.fromOffset(260, 140), center, 14, 21)
+		e.Rotation = -6
+		stroke(C.line, 1).Parent = e
+		local sleeve = rect(e, Color3.fromRGB(40, 90, 190), UDim2.new(0.5, 0, 1, 0), UDim2.fromScale(0.7, 0.5), nil, 22)
+		txt(sleeve, "ERASER", 18, Color3.new(1, 1, 1), UDim2.fromScale(0.5, 0.5), 23)
+		local w = txt(e, qn .. "번 " .. num, 34, Color3.fromRGB(60, 60, 60), UDim2.fromScale(0.25, 0.5), 23, F.mid, UDim2.new(0.5, 0, 0, 44))
+		w.Rotation = 4
+	elseif kind == "note" then
+		local n = rect(h, Color3.fromRGB(255, 244, 150), UDim2.fromOffset(250, 250), center, 4, 21)
+		n.Rotation = 4
+		for i2 = 1, 6 do
+			rect(n, Color3.fromRGB(230, 210, 110), UDim2.new(1, -30, 0, 1), UDim2.new(0.5, 0, 0, 40 + i2 * 30), nil, 22)
+		end
+		txt(n, "커닝 쪽지", 16, Color3.fromRGB(120, 100, 30), UDim2.fromScale(0.5, 0.12), 23, F.mid)
+		txt(n, qn .. "번 → " .. num, 46, Color3.fromRGB(40, 40, 40), UDim2.fromScale(0.5, 0.5), 23, F.bold, UDim2.new(1, 0, 0, 56))
+	elseif kind == "neighbor" then
+		local p = rect(h, C.paper, UDim2.fromOffset(280, 300), center, 6, 21)
+		p.Rotation = -5
+		stroke(C.line, 1).Parent = p
+		txt(p, (extra.seat or "?") .. "번 자리 답안지", 16, C.muted, UDim2.fromScale(0.5, 0.1), 23, F.mid)
+		for i2 = 1, 5 do
+			local y = 0.25 + (i2 - 1) * 0.14
+			txt(p, Shared.NUM[i2], 26, C.text, UDim2.fromScale(0.5, y), 23, F.reg, UDim2.fromOffset(40, 34))
+			if i2 == ans then
+				local circle = rect(p, Color3.new(1, 1, 1), UDim2.fromOffset(44, 44), UDim2.fromScale(0.5, y), 22, 22, { BackgroundTransparency = 1 })
+				stroke(C.danger, 3).Parent = circle
+			end
+		end
+		txt(p, qn .. "번 문제", 14, C.muted, UDim2.fromScale(0.5, 0.95), 23, F.mid)
+	else
+		local c2 = rect(h, C.surface, UDim2.fromOffset(260, 220), center, 18, 21)
+		stroke(C.line, 1).Parent = c2
+		txt(c2, name, 20, C.text, UDim2.fromScale(0.5, 0.18), 23, F.bold)
+		txt(c2, "이(가) 속삭인다…", 13, C.muted, UDim2.fromScale(0.5, 0.32), 23, F.mid)
+		txt(c2, qn .. "번 정답 " .. num, 40, C.accent, UDim2.fromScale(0.5, 0.65), 23, F.bold, UDim2.new(1, 0, 0, 50))
+	end
+end
+
+local function showCheatView(name, isCopy, ans, extra)
+	viewId = viewId + 1
+	local my = viewId
+	buildView(kindOf(name, isCopy), name, ans, extra)
+	viewHolder.Position = UDim2.new(0.5, 0, 1, 420)
+	TweenService:Create(viewHolder, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 1, -20) }):Play()
+	task.delay(4, function()
+		if viewId == my then
+			TweenService:Create(viewHolder, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 1, 420) }):Play()
+		end
+	end)
+end
+
+-------------------------------------------------------------------
 -- 결과창
 -------------------------------------------------------------------
 local modal = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 40, Visible = false })
@@ -718,6 +868,10 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 		if action == "Hint" then
 			hintLabel.TextColor3 = C.ok
 			hintLabel.Text = data
+			if type(extra) == "table" and extra.ans then
+				local c = cheats[selected]
+				showCheatView(c and c.name or "", c and c.copy, extra.ans, extra)
+			end
 		end
 	elseif action == "Domain" then
 		cheatingUntil = nil
