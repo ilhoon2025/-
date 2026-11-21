@@ -823,6 +823,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 
 local Shared = require(ReplicatedStorage:WaitForChild("SuneungShared"))
 local remote = ReplicatedStorage:WaitForChild("SuneungEvent")
@@ -934,6 +936,12 @@ text({ Parent = left, Text = "부정행위 적기", Font = F.bold, TextSize = 17
 text({ Parent = left, Text = "세상에 있는 아무거나 적어 보세요. 적은 것마다 성공률과 적발 확률이 달라요.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 32), Position = UDim2.fromOffset(0, 26) })
 
 local inputRow = new("Frame", { Parent = left, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), Position = UDim2.fromOffset(0, 66) })
+-- 키보드가 있으면 게임이 직접 키를 받아 한글을 조합하는 입력창, 터치 전용 기기는 일반 입력칸
+local useCustomField = UserInputService.KeyboardEnabled
+local field = button({ Parent = inputRow, Text = "", BackgroundColor3 = C.sub, Size = UDim2.new(1, -110, 1, 0), AutoButtonColor = false, Visible = useCustomField }, false)
+field.BackgroundColor3 = C.sub
+local fieldText = text({ Parent = field, Text = "", TextSize = 15, Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0), TextTruncate = Enum.TextTruncate.AtEnd })
+local modeBtn = button({ Parent = inputRow, Text = "한", TextSize = 14, Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(1, -104, 0, 0), Visible = useCustomField }, false)
 local input = new("TextBox", {
 	Parent = inputRow,
 	Size = UDim2.new(1, -66, 1, 0),
@@ -947,6 +955,7 @@ local input = new("TextBox", {
 	ClearTextOnFocus = false,
 	TextXAlignment = Enum.TextXAlignment.Left,
 	TextTruncate = Enum.TextTruncate.AtEnd,
+	Visible = not useCustomField,
 }, { corner(8), stroke(), pad(10, 0) })
 local addBtn = button({ Parent = inputRow, Text = "추가", Size = UDim2.new(0, 58, 1, 0), Position = UDim2.new(1, -58, 0, 0) })
 
@@ -1085,14 +1094,219 @@ for _, n in ipairs({ "옆자리 친구", "손바닥 필기", "스마트워치" }
 	addCheat(n)
 end
 
--- 한글 입력: 조합 중인 마지막 글자가 확정된 뒤에 읽도록 한 프레임 늦게 처리
-local function submitInput()
-	task.defer(function()
-		local t = input.Text
-		input.Text = ""
-		addCheat(t)
-	end)
+-------------------------------------------------------------------
+-- 한글 입력기 (두벌식)
+-- Roblox 입력칸은 한글 조합(IME)이 안 되는 경우가 있어서
+-- 누른 키를 직접 받아서 한글로 조합합니다.
+-------------------------------------------------------------------
+local CHO = { "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ" }
+local JUNG = { "ㅏ", "ㅐ", "ㅑ", "ㅒ", "ㅓ", "ㅔ", "ㅕ", "ㅖ", "ㅗ", "ㅘ", "ㅙ", "ㅚ", "ㅛ", "ㅜ", "ㅝ", "ㅞ", "ㅟ", "ㅠ", "ㅡ", "ㅢ", "ㅣ" }
+local JONG = { "ㄱ", "ㄲ", "ㄳ", "ㄴ", "ㄵ", "ㄶ", "ㄷ", "ㄹ", "ㄺ", "ㄻ", "ㄼ", "ㄽ", "ㄾ", "ㄿ", "ㅀ", "ㅁ", "ㅂ", "ㅄ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ" }
+local CHO_I, JUNG_I, JONG_I = {}, {}, {}
+for i, v in ipairs(CHO) do
+	CHO_I[v] = i - 1
 end
+for i, v in ipairs(JUNG) do
+	JUNG_I[v] = i - 1
+end
+for i, v in ipairs(JONG) do
+	JONG_I[v] = i
+end
+local VCOMB = { ["ㅗㅏ"] = "ㅘ", ["ㅗㅐ"] = "ㅙ", ["ㅗㅣ"] = "ㅚ", ["ㅜㅓ"] = "ㅝ", ["ㅜㅔ"] = "ㅞ", ["ㅜㅣ"] = "ㅟ", ["ㅡㅣ"] = "ㅢ" }
+local JCOMB = { ["ㄱㅅ"] = "ㄳ", ["ㄴㅈ"] = "ㄵ", ["ㄴㅎ"] = "ㄶ", ["ㄹㄱ"] = "ㄺ", ["ㄹㅁ"] = "ㄻ", ["ㄹㅂ"] = "ㄼ", ["ㄹㅅ"] = "ㄽ", ["ㄹㅌ"] = "ㄾ", ["ㄹㅍ"] = "ㄿ", ["ㄹㅎ"] = "ㅀ", ["ㅂㅅ"] = "ㅄ" }
+local JSPLIT = {}
+for k, v in pairs(JCOMB) do
+	JSPLIT[v] = { string.sub(k, 1, 3), string.sub(k, 4, 6) } -- 자모는 3바이트
+end
+local KEYMAP = {
+	Q = "ㅂ", W = "ㅈ", E = "ㄷ", R = "ㄱ", T = "ㅅ", Y = "ㅛ", U = "ㅕ", I = "ㅑ", O = "ㅐ", P = "ㅔ",
+	A = "ㅁ", S = "ㄴ", D = "ㅇ", F = "ㄹ", G = "ㅎ", H = "ㅗ", J = "ㅓ", K = "ㅏ", L = "ㅣ",
+	Z = "ㅋ", X = "ㅌ", C = "ㅊ", V = "ㅍ", B = "ㅠ", N = "ㅜ", M = "ㅡ",
+}
+local SHIFTMAP = { Q = "ㅃ", W = "ㅉ", E = "ㄸ", R = "ㄲ", T = "ㅆ", O = "ㅒ", P = "ㅖ" }
+local DIGITS = { Zero = "0", One = "1", Two = "2", Three = "3", Four = "4", Five = "5", Six = "6", Seven = "7", Eight = "8", Nine = "9" }
+
+-- 입력한 자모/글자 목록 → 완성된 문자열
+local function compose(units)
+	local out = {}
+	local cho, jung, jong
+	local function flush()
+		if cho and jung then
+			out[#out + 1] = utf8.char(0xAC00 + (CHO_I[cho] * 21 + JUNG_I[jung]) * 28 + (jong and JONG_I[jong] or 0))
+		elseif cho then
+			out[#out + 1] = cho
+		elseif jung then
+			out[#out + 1] = jung
+		end
+		cho, jung, jong = nil, nil, nil
+	end
+	for _, u in ipairs(units) do
+		if CHO_I[u] then -- 자음
+			if cho and jung then
+				if not jong then
+					if JONG_I[u] then
+						jong = u
+					else
+						flush()
+						cho = u
+					end
+				elseif JCOMB[jong .. u] then
+					jong = JCOMB[jong .. u]
+				else
+					flush()
+					cho = u
+				end
+			else
+				flush()
+				cho = u
+			end
+		elseif JUNG_I[u] then -- 모음
+			if cho and jung and jong then
+				local nextCho
+				if JSPLIT[jong] then
+					jong, nextCho = JSPLIT[jong][1], JSPLIT[jong][2]
+				else
+					jong, nextCho = nil, jong
+				end
+				flush()
+				cho, jung = nextCho, u
+			elseif jung then
+				if VCOMB[jung .. u] then
+					jung = VCOMB[jung .. u]
+				else
+					flush()
+					jung = u
+				end
+			else
+				jung = u
+			end
+		else -- 영어, 숫자, 띄어쓰기
+			flush()
+			out[#out + 1] = u
+		end
+	end
+	flush()
+	return table.concat(out)
+end
+
+local units = {}
+local hangulMode = true
+local focused = false
+local caretOn = true
+
+local function refreshField()
+	local str = compose(units)
+	if str == "" and not focused then
+		fieldText.Text = "예) 스마트워치, 지우개"
+		fieldText.TextColor3 = C.muted
+	else
+		fieldText.Text = str .. ((focused and caretOn) and "|" or "")
+		fieldText.TextColor3 = C.text
+	end
+	field.UIStroke.Color = focused and C.accent or C.line
+	modeBtn.Text = hangulMode and "한" or "A"
+end
+
+local function submitInput()
+	if useCustomField then
+		local t = compose(units)
+		units = {}
+		refreshField()
+		addCheat(t)
+	else
+		task.defer(function()
+			local t = input.Text
+			input.Text = ""
+			addCheat(t)
+		end)
+	end
+end
+
+local function setFocus(on)
+	if focused == on then
+		return
+	end
+	focused = on
+	if on then
+		ContextActionService:BindActionAtPriority("SuneungTyping", function(_, state, obj)
+			if state ~= Enum.UserInputState.Begin then
+				return Enum.ContextActionResult.Sink
+			end
+			local key = obj.KeyCode
+			local name = key.Name
+			local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+			if key == Enum.KeyCode.Return or key == Enum.KeyCode.KeypadEnter then
+				submitInput()
+			elseif key == Enum.KeyCode.Escape then
+				setFocus(false)
+			elseif key == Enum.KeyCode.Backspace then
+				table.remove(units)
+			elseif key == Enum.KeyCode.Space then
+				table.insert(units, " ")
+			elseif key == Enum.KeyCode.RightAlt or key == Enum.KeyCode.Tab then
+				hangulMode = not hangulMode
+			elseif DIGITS[name] then
+				table.insert(units, DIGITS[name])
+			elseif KEYMAP[name] then
+				if hangulMode then
+					table.insert(units, (shift and SHIFTMAP[name]) or KEYMAP[name])
+				else
+					table.insert(units, shift and name or string.lower(name))
+				end
+			end
+			-- 20자 넘으면 마지막 입력 취소
+			if utf8.len(compose(units)) > 20 then
+				table.remove(units)
+			end
+			refreshField()
+			return Enum.ContextActionResult.Sink
+		end, false, Enum.ContextActionPriority.High.Value + 100,
+		Enum.KeyCode.A, Enum.KeyCode.B, Enum.KeyCode.C, Enum.KeyCode.D, Enum.KeyCode.E, Enum.KeyCode.F, Enum.KeyCode.G,
+		Enum.KeyCode.H, Enum.KeyCode.I, Enum.KeyCode.J, Enum.KeyCode.K, Enum.KeyCode.L, Enum.KeyCode.M, Enum.KeyCode.N,
+		Enum.KeyCode.O, Enum.KeyCode.P, Enum.KeyCode.Q, Enum.KeyCode.R, Enum.KeyCode.S, Enum.KeyCode.T, Enum.KeyCode.U,
+		Enum.KeyCode.V, Enum.KeyCode.W, Enum.KeyCode.X, Enum.KeyCode.Y, Enum.KeyCode.Z,
+		Enum.KeyCode.Zero, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four,
+		Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
+		Enum.KeyCode.Space, Enum.KeyCode.Backspace, Enum.KeyCode.Return, Enum.KeyCode.KeypadEnter,
+		Enum.KeyCode.Escape, Enum.KeyCode.RightAlt, Enum.KeyCode.Tab)
+	else
+		ContextActionService:UnbindAction("SuneungTyping")
+	end
+	refreshField()
+end
+
+field.MouseButton1Click:Connect(function()
+	setFocus(true)
+end)
+modeBtn.MouseButton1Click:Connect(function()
+	hangulMode = not hangulMode
+	setFocus(true)
+	refreshField()
+end)
+-- 입력창 밖을 클릭하면 입력 끝
+UserInputService.InputBegan:Connect(function(obj)
+	if focused and obj.UserInputType == Enum.UserInputType.MouseButton1 then
+		local p = obj.Position
+		local function inside(g)
+			local a, s = g.AbsolutePosition, g.AbsoluteSize
+			return p.X >= a.X and p.X <= a.X + s.X and p.Y >= a.Y and p.Y <= a.Y + s.Y
+		end
+		if not (inside(field) or inside(modeBtn) or inside(addBtn)) then
+			setFocus(false)
+		end
+	end
+end)
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		caretOn = not caretOn
+		if focused then
+			refreshField()
+		end
+	end
+end)
+refreshField()
+
 addBtn.MouseButton1Click:Connect(submitInput)
 input.FocusLost:Connect(function(enter)
 	if enter then
