@@ -330,6 +330,65 @@ do
 end
 
 -------------------------------------------------------------------
+-- 부정행위 전문점 (매점 옆)
+-------------------------------------------------------------------
+local PZ0, PZ1 = SZ1 + 6, SZ1 + 52
+local PDOOR0, PDOOR1 = PZ0 + 19, PZ0 + 27
+local proWall = Color3.fromRGB(45, 30, 70)
+box(SX0, -0.2, PZ0, SX1, 0.2, PZ1, { Color = Color3.fromRGB(30, 30, 40), Material = Enum.Material.Slate })
+box(SX0, 12, PZ0, SX1, 13, PZ1, { Color = Color3.fromRGB(25, 20, 35) })
+box(SX0, 0, PZ0, SX0 + 1, 12, PDOOR0, { Color = proWall })
+box(SX0, 0, PDOOR1, SX0 + 1, 12, PZ1, { Color = proWall })
+box(SX0, 9, PDOOR0, SX0 + 1, 12, PDOOR1, { Color = proWall })
+box(SX0, 3, PZ0 + 4, SX0 + 1.1, 8, PDOOR0 - 3, { Color = Color3.fromRGB(60, 40, 90), Material = Enum.Material.Glass, Transparency = 0.3 })
+box(SX0, 3, PDOOR1 + 3, SX0 + 1.1, 8, PZ1 - 4, { Color = Color3.fromRGB(60, 40, 90), Material = Enum.Material.Glass, Transparency = 0.3 })
+box(SX1 - 1, 0, PZ0, SX1, 12, PZ1, { Color = proWall })
+box(SX0, 0, PZ0, SX1, 12, PZ0 + 1, { Color = proWall })
+box(SX0, 0, PZ1 - 1, SX1, 12, PZ1, { Color = proWall })
+local proSign = box(SX0 - 0.6, 12.5, PZ0 + 5, SX0 - 0.2, 17, PZ1 - 5, { Color = Color3.fromRGB(20, 10, 30) })
+surfaceText(proSign, Enum.NormalId.Left, "부정행위 전문점", Color3.fromRGB(190, 120, 255), Enum.Font.GothamBlack)
+do
+	local neon = box(SX0 - 0.7, 12.3, PZ0 + 5, SX0 - 0.5, 12.5, PZ1 - 5, { Color = Color3.fromRGB(170, 80, 255), Material = Enum.Material.Neon })
+	local l = Instance.new("PointLight")
+	l.Color = Color3.fromRGB(170, 80, 255)
+	l.Range = 20
+	l.Brightness = 2
+	l.Parent = neon
+	local lamp = part({ Size = Vector3.new(16, 0.3, 2), Position = Vector3.new((SX0 + SX1) / 2, 11.8, (PZ0 + PZ1) / 2), Color = Color3.fromRGB(200, 160, 255), Material = Enum.Material.Neon })
+	local l2 = Instance.new("PointLight")
+	l2.Range = 30
+	l2.Brightness = 1.3
+	l2.Color = Color3.fromRGB(210, 190, 255)
+	l2.Parent = lamp
+end
+-- 진열대: 빛나는 전자기기들
+local GADGET_C = { Color3.fromRGB(80, 220, 255), Color3.fromRGB(255, 80, 200), Color3.fromRGB(120, 255, 140), Color3.fromRGB(255, 220, 80), Color3.fromRGB(170, 120, 255) }
+for _, z in ipairs({ PZ0 + 6, PZ1 - 6 }) do
+	box(SX0 + 12, 0, z - 1.5, SX1 - 4, 6, z + 1.5, { Color = Color3.fromRGB(40, 40, 50), Material = Enum.Material.Metal })
+	for x = SX0 + 13, SX1 - 6, 2.5 do
+		for _, y in ipairs({ 2.8, 5.4 }) do
+			part({ Size = Vector3.new(1.2, 0.8, 0.3), Position = Vector3.new(x, y, z - 1.7), Color = GADGET_C[math.random(1, #GADGET_C)], Material = Enum.Material.Neon })
+		end
+	end
+end
+local proCounter = box(SX1 - 12, 0, PDOOR0 - 2, SX1 - 8, 4, PDOOR1 + 2, { Name = "ProCounter", Color = Color3.fromRGB(20, 20, 25), Material = Enum.Material.Glass, Reflectance = 0.2 })
+local proPrompt = Instance.new("ProximityPrompt")
+proPrompt.ActionText = "장비 구매"
+proPrompt.ObjectText = "부정행위 전문점"
+proPrompt.HoldDuration = 0
+proPrompt.MaxActivationDistance = 12
+proPrompt.RequiresLineOfSight = false
+proPrompt.Parent = proCounter
+do
+	local cx, cz = SX1 - 5, (PDOOR0 + PDOOR1) / 2
+	part({ Size = Vector3.new(2, 2.5, 1), Position = Vector3.new(cx, 1.25, cz), Color = Color3.fromRGB(20, 20, 20) })
+	part({ Size = Vector3.new(2, 2, 1), Position = Vector3.new(cx, 3.5, cz), Color = Color3.fromRGB(25, 25, 30) })
+	local h = part({ Size = Vector3.new(1.6, 1.6, 1.6), Position = Vector3.new(cx, 5.3, cz), Color = Color3.fromRGB(243, 210, 179), Shape = Enum.PartType.Ball })
+	part({ Size = Vector3.new(1.4, 0.35, 0.2), Position = Vector3.new(cx - 0.85, 5.45, cz), Orientation = Vector3.new(0, 90, 0), Color = Color3.fromRGB(10, 10, 10) })
+	makeBillboard(h, "전문점 사장", 2, Color3.fromRGB(200, 160, 255))
+end
+
+-------------------------------------------------------------------
 -- 뉴비 감독관
 -------------------------------------------------------------------
 local VIEW_RANGE = 34
@@ -417,6 +476,7 @@ end
 -------------------------------------------------------------------
 local sessions = {} -- [player] = 시험 상태
 local inventory = {} -- [player] = { [id] = 개수 }
+local owned = {} -- [player] = { [기기 이름] = true }
 
 local function moneyOf(player)
 	local ls = player:FindFirstChild("leaderstats")
@@ -637,6 +697,7 @@ Players.PlayerAdded:Connect(function(player)
 	money.Parent = ls
 	ls.Parent = player
 	inventory[player] = {}
+	owned[player] = {}
 	player.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid")
 		hum.Died:Connect(function()
@@ -652,9 +713,15 @@ Players.PlayerRemoving:Connect(function(player)
 	local _, d = deskOf(player)
 	sessions[player] = nil
 	inventory[player] = nil
+	owned[player] = nil
 	if d then
 		d.occupant = nil
 	end
+end)
+
+proPrompt.Triggered:Connect(function(player)
+	local m = moneyOf(player)
+	remote:FireClient(player, "OpenProShop", m and m.Value or 0)
 end)
 
 prompt.Triggered:Connect(function(player)
@@ -714,7 +781,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			cheating = false,
 			away = false,
 			nextEmptyCheck = 0,
-			cheat = Shared.makeCheat(cheatName),
+			cheat = Shared.makeCheat(cheatName, owned[player] and owned[player][cheatName]),
 			cheatShown = filterFor(player, cheatName),
 			desk = seat,
 		}
@@ -741,7 +808,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		end
 		if type(arg) == "string" and arg ~= s.cheat.name then
 			local n = Shared.clip(arg, 20)
-			s.cheat = Shared.makeCheat(n)
+			s.cheat = Shared.makeCheat(n, owned[player] and owned[player][n])
 			s.cheatShown = filterFor(player, n)
 		end
 		s.cheating = true
@@ -793,6 +860,37 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		sendInventory(player)
 		remote:FireClient(player, "Money", m.Value)
 		toast(player, item.name .. " 구매 완료")
+	elseif action == "BuyPro" then
+		if type(arg) ~= "string" then
+			return
+		end
+		local name = Shared.clip(arg, 20)
+		local m = moneyOf(player)
+		local _, _, hrp = getParts(player)
+		if name == "" or not m or not hrp or not owned[player] then
+			return
+		end
+		if (hrp.Position - proCounter.Position).Magnitude > 18 then
+			toast(player, "전문점 계산대 가까이 가야 살 수 있어요.")
+			return
+		end
+		if owned[player][name] then
+			toast(player, "이미 가지고 있어요.")
+			return
+		end
+		local price = Shared.proPrice(name)
+		if m.Value < price then
+			toast(player, "돈이 부족해요. (" .. price .. "원)")
+			return
+		end
+		m.Value = m.Value - price
+		owned[player][name] = true
+		local list = {}
+		for k in pairs(owned[player]) do
+			table.insert(list, k)
+		end
+		remote:FireClient(player, "Owned", list, name)
+		toast(player, filterFor(player, name) .. " 구매 완료 (정품: 성공률 +25%, 적발 확률 -15%)")
 	elseif action == "Eat" then
 		local item = type(arg) == "string" and Shared.shopItem(arg)
 		local inv = inventory[player]

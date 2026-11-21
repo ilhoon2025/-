@@ -240,6 +240,55 @@ shopClose.MouseButton1Click:Connect(function()
 end)
 
 -------------------------------------------------------------------
+-- 부정행위 전문점 창
+-------------------------------------------------------------------
+local proShop = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 30, Visible = false })
+local proBox = card({ Parent = proShop, ZIndex = 31, BackgroundColor3 = Color3.fromRGB(24, 22, 34), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(560, 600) })
+proBox.UIStroke.Color = Color3.fromRGB(150, 90, 240)
+pad(20).Parent = proBox
+local PRO_TEXT = Color3.fromRGB(235, 230, 250)
+local PRO_MUTED = Color3.fromRGB(160, 150, 190)
+local PRO_ACCENT = Color3.fromRGB(150, 90, 240)
+text({ Parent = proBox, ZIndex = 32, Text = "부정행위 전문점", Font = F.bold, TextSize = 20, TextColor3 = PRO_TEXT, Size = UDim2.new(1, 0, 0, 26) })
+text({ Parent = proBox, ZIndex = 32, Text = "세상의 모든 전자기기. 정품은 성공률 +25%, 적발 확률 -15%", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, 0, 0, 16), Position = UDim2.fromOffset(0, 28) })
+local proMoney = text({ Parent = proBox, ZIndex = 32, Text = "", Font = F.mid, TextSize = 14, TextColor3 = PRO_MUTED, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -40, 0, 26) })
+local proClose = button({ Parent = proBox, ZIndex = 32, Text = "X", TextSize = 14, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(28, 26), Position = UDim2.fromScale(1, 0) }, false)
+
+-- 맞춤 제작: 왼쪽 목록에서 고른 물건을 그대로 주문
+local custom = new("Frame", { Parent = proBox, ZIndex = 32, BackgroundColor3 = Color3.fromRGB(40, 32, 62), Size = UDim2.new(1, 0, 0, 58), Position = UDim2.fromOffset(0, 54) }, { corner(8) })
+text({ Parent = custom, ZIndex = 33, Text = "맞춤 제작", Font = F.bold, TextSize = 13, TextColor3 = Color3.fromRGB(200, 170, 255), Size = UDim2.new(1, -140, 0, 18), Position = UDim2.fromOffset(12, 8) })
+local customName = text({ Parent = custom, ZIndex = 33, Text = "", Font = F.mid, TextSize = 13, TextColor3 = PRO_TEXT, Size = UDim2.new(1, -140, 0, 22), Position = UDim2.fromOffset(12, 28), TextTruncate = Enum.TextTruncate.AtEnd })
+local customBtn = button({ Parent = custom, ZIndex = 33, Text = "주문", TextSize = 14, BackgroundColor3 = PRO_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(110, 38), Position = UDim2.new(1, -10, 0.5, 0) })
+
+local proList = new("ScrollingFrame", { Parent = proBox, ZIndex = 32, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -124), Position = UDim2.fromOffset(0, 124), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 4, ScrollBarImageColor3 = PRO_ACCENT })
+new("UIGridLayout", { Parent = proList, CellSize = UDim2.new(0.5, -6, 0, 50), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder })
+local owned = {}
+local proButtons = {}
+for i, it in ipairs(Shared.PRO) do
+	local row = new("Frame", { Parent = proList, ZIndex = 33, LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(36, 32, 52) }, { corner(8) })
+	text({ Parent = row, ZIndex = 34, Text = it.name, Font = F.bold, TextSize = 13, TextColor3 = PRO_TEXT, Size = UDim2.new(1, -86, 0, 18), Position = UDim2.fromOffset(10, 7), TextTruncate = Enum.TextTruncate.AtEnd })
+	text({ Parent = row, ZIndex = 34, Text = it.price .. "원", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, -86, 0, 16), Position = UDim2.fromOffset(10, 27) })
+	local b = button({ Parent = row, ZIndex = 34, Text = "구매", TextSize = 13, BackgroundColor3 = PRO_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(66, 32), Position = UDim2.new(1, -8, 0.5, 0) })
+	b.MouseButton1Click:Connect(function()
+		if not owned[it.name] then
+			remote:FireServer("BuyPro", it.name)
+		end
+	end)
+	proButtons[it.name] = b
+end
+local function refreshProButtons()
+	for name, b in pairs(proButtons) do
+		local has = owned[name]
+		b.Text = has and "보유" or "구매"
+		b.BackgroundColor3 = has and Color3.fromRGB(70, 70, 85) or PRO_ACCENT
+	end
+end
+proClose.MouseButton1Click:Connect(function()
+	proShop.Visible = false
+end)
+-- customBtn 은 cheats 가 정의된 뒤에 연결 (아래)
+
+-------------------------------------------------------------------
 -- 알림
 -------------------------------------------------------------------
 local toastLabel = text({ Parent = root, ZIndex = 60, Text = "", Font = F.mid, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.15, BackgroundColor3 = Color3.fromRGB(31, 35, 40), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(420, 40), Position = UDim2.new(0.5, 0, 0, 72), Visible = false })
@@ -267,6 +316,8 @@ local KINDS = {
 	{ kind = "palm", words = { "손바닥", "손", "팔" } },
 	{ kind = "eraser", words = { "지우개" } },
 	{ kind = "note", words = { "쪽지", "메모", "종이", "커닝페이퍼", "포스트잇", "필기" } },
+	{ kind = "earbud", words = { "이어폰", "이어버드", "무전기", "스피커", "녹음기", "mp3", "귀" } },
+	{ kind = "glasses", words = { "안경", "렌즈", "vr", "디스플레이", "카메라", "헤드셋" } },
 }
 local function kindOf(name, isCopy)
 	if isCopy then
@@ -385,6 +436,28 @@ local function buildView(kind, name, ans, extra)
 			end
 		end
 		txt(p, qn .. "번 문제", 14, C.muted, UDim2.fromScale(0.5, 0.95), 23, F.mid)
+	elseif kind == "earbud" then
+		local bud = rect(h, Color3.fromRGB(245, 245, 248), UDim2.fromOffset(90, 90), UDim2.new(0.5, 0, 1, -60), 45, 22)
+		stroke(C.line, 1).Parent = bud
+		rect(bud, Color3.fromRGB(40, 40, 45), UDim2.fromOffset(34, 34), center, 17, 23)
+		for k = 1, 3 do
+			local wave = rect(h, Color3.new(1, 1, 1), UDim2.fromOffset(90 + k * 50, 90 + k * 50), UDim2.new(0.5, 0, 1, -60), 200, 21, { BackgroundTransparency = 1 })
+			stroke(Color3.fromRGB(120, 200, 255), 3).Parent = wave
+			wave.UIStroke.Transparency = 0.2 + k * 0.2
+		end
+		local bubble = rect(h, Color3.fromRGB(20, 24, 36), UDim2.fromOffset(280, 110), UDim2.new(0.5, 0, 0, 80), 16, 24)
+		txt(bubble, "(속삭임)", 13, Color3.fromRGB(150, 170, 200), UDim2.fromScale(0.5, 0.2), 25, F.mid)
+		txt(bubble, qn .. "번… 정답은 " .. num, 30, Color3.fromRGB(120, 220, 255), UDim2.fromScale(0.5, 0.62), 25, F.bold, UDim2.new(1, 0, 0, 40))
+	elseif kind == "glasses" then
+		local frameC = Color3.fromRGB(25, 25, 30)
+		for _, off in ipairs({ -78, 78 }) do
+			local lens = rect(h, Color3.fromRGB(120, 200, 255), UDim2.fromOffset(140, 110), UDim2.new(0.5, off, 0.5, 0), 40, 22, { BackgroundTransparency = 0.55 })
+			stroke(frameC, 8).Parent = lens
+		end
+		rect(h, frameC, UDim2.fromOffset(30, 8), UDim2.new(0.5, 0, 0.5, -20), 4, 23)
+		local hud = txt(h, qn .. "번 정답 " .. num, 30, Color3.fromRGB(120, 255, 170), UDim2.new(0.5, 78, 0.5, 0), 25, F.bold, UDim2.fromOffset(140, 40))
+		hud.TextScaled = true
+		txt(h, "HUD", 12, Color3.fromRGB(120, 255, 170), UDim2.new(0.5, 78, 0.5, -36), 25, F.mid, UDim2.fromOffset(140, 16))
 	else
 		local c2 = rect(h, C.surface, UDim2.fromOffset(260, 220), center, 18, 21)
 		stroke(C.line, 1).Parent = c2
@@ -443,7 +516,7 @@ local function renderCheats()
 		local st = stroke(on and C.accent or C.line, on and 2 or 1)
 		st.Parent = item
 		text({ Parent = item, Text = c.name, Font = F.bold, TextSize = 14, Size = UDim2.new(1, -90, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd })
-		text({ Parent = item, Text = c.type, TextSize = 11, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 90, 0, 18), Position = UDim2.new(1, -90, 0, 0) })
+		text({ Parent = item, Text = c.type, TextSize = 11, TextColor3 = c.pro and Color3.fromRGB(130, 70, 220) or C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 90, 0, 18), Position = UDim2.new(1, -90, 0, 0) })
 		meter(item, 26, "성공률", c.success, C.ok)
 		meter(item, 42, "적발 확률", c.risk, C.danger)
 		item.MouseButton1Click:Connect(function()
@@ -468,7 +541,7 @@ local function addCheat(name)
 			return
 		end
 	end
-	table.insert(cheats, 1, Shared.makeCheat(name))
+	table.insert(cheats, 1, Shared.makeCheat(name, owned[name]))
 	selected = 1
 	renderCheats()
 end
@@ -476,6 +549,17 @@ end
 for _, n in ipairs({ "옆자리 친구", "손바닥 필기", "스마트워치" }) do
 	addCheat(n)
 end
+
+customBtn.MouseButton1Click:Connect(function()
+	local c = cheats[selected]
+	if c then
+		if owned[c.name] then
+			toast("이미 정품을 가지고 있어요.")
+		else
+			remote:FireServer("BuyPro", c.name)
+		end
+	end
+end)
 
 -------------------------------------------------------------------
 -- 한글 입력기 (두벌식)
@@ -764,6 +848,7 @@ renderBag({})
 local function showMoney(v)
 	moneyLabel.Text = v .. "원"
 	shopMoney.Text = "가진 돈 " .. v .. "원"
+	proMoney.Text = "가진 돈 " .. v .. "원"
 end
 task.spawn(function()
 	local ls = player:WaitForChild("leaderstats")
@@ -897,6 +982,29 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 		renderBag(data)
 	elseif action == "Money" then
 		showMoney(data)
+	elseif action == "OpenProShop" then
+		proMoney.Text = "가진 돈 " .. data .. "원"
+		local c = cheats[selected]
+		if c then
+			customName.Text = c.name .. "  ·  " .. Shared.proPrice(c.name) .. "원"
+		else
+			customName.Text = "왼쪽에서 물건을 고르세요"
+		end
+		refreshProButtons()
+		proShop.Visible = true
+	elseif action == "Owned" then
+		owned = {}
+		for _, n in ipairs(data) do
+			owned[n] = true
+		end
+		for i, c in ipairs(cheats) do
+			cheats[i] = Shared.makeCheat(c.name, owned[c.name])
+		end
+		if extra then
+			addCheat(extra)
+		end
+		renderCheats()
+		refreshProButtons()
 	elseif action == "OpenShop" then
 		showMoney(data)
 		shop.Visible = true
