@@ -167,7 +167,7 @@ for r, z in ipairs(ROWS_Z) do
 		local i = (r - 1) * #COLS_X + c
 		desks[i] = { pos = Vector3.new(x, 0, z), seed = 1000 + i * 97 }
 		buildDesk(i, desks[i].pos)
-		buildNPC(i)
+		-- AI 학생 없음: 플레이어가 들어와서 앉음
 	end
 end
 
@@ -179,20 +179,30 @@ local VIEW_ANGLE = math.rad(32)
 
 local teacher = Instance.new("Model")
 teacher.Name = "Teacher"
-local tRoot = part({ Parent = teacher, Name = "Root", Size = Vector3.new(2, 2, 1), Position = Vector3.new(0, 4.5, 0), Color = Color3.fromRGB(51, 56, 77), CanCollide = false })
-local function tPart(name, size, offset, color, shape)
-	local p = part({ Parent = teacher, Name = name, Size = size, CFrame = tRoot.CFrame * CFrame.new(offset), Color = color, CanCollide = false })
-	if shape then
-		p.Shape = shape
-	end
-	return p
+-- 뉴비 감독관: 노란 머리·팔, 파란 몸통, 초록 다리
+local NOOB_YELLOW = Color3.fromRGB(245, 205, 48)
+local NOOB_BLUE = Color3.fromRGB(13, 105, 172)
+local NOOB_GREEN = Color3.fromRGB(75, 151, 75)
+local tRoot = part({ Parent = teacher, Name = "Root", Size = Vector3.new(2, 2, 1), Position = Vector3.new(0, 4.5, 0), Color = NOOB_BLUE, CanCollide = false })
+local function tPart(name, size, offset, color)
+	return part({ Parent = teacher, Name = name, Size = size, CFrame = tRoot.CFrame * CFrame.new(offset), Color = color, CanCollide = false })
 end
-tPart("Legs", Vector3.new(2, 2.5, 1), Vector3.new(0, -2.25, 0), Color3.fromRGB(30, 30, 40))
-tPart("ArmL", Vector3.new(0.9, 2, 0.9), Vector3.new(-1.45, 0, 0), Color3.fromRGB(51, 56, 77))
-tPart("ArmR", Vector3.new(0.9, 2, 0.9), Vector3.new(1.45, 0, 0), Color3.fromRGB(51, 56, 77))
-local tHead = tPart("Head", Vector3.new(1.7, 1.7, 1.7), Vector3.new(0, 1.85, 0), SKIN, Enum.PartType.Ball)
-tPart("Hair", Vector3.new(1.85, 0.6, 1.85), Vector3.new(0, 2.55, 0.1), Color3.fromRGB(220, 220, 220))
-tPart("Glasses", Vector3.new(1.3, 0.35, 0.1), Vector3.new(0, 1.95, -0.85), Color3.fromRGB(15, 15, 15))
+tPart("LegL", Vector3.new(1, 2.5, 1), Vector3.new(-0.5, -2.25, 0), NOOB_GREEN)
+tPart("LegR", Vector3.new(1, 2.5, 1), Vector3.new(0.5, -2.25, 0), NOOB_GREEN)
+tPart("ArmL", Vector3.new(1, 2, 1), Vector3.new(-1.5, 0, 0), NOOB_YELLOW)
+tPart("ArmR", Vector3.new(1, 2, 1), Vector3.new(1.5, 0, 0), NOOB_YELLOW)
+local tHead = tPart("Head", Vector3.new(2, 1, 1), Vector3.new(0, 1.5, 0), NOOB_YELLOW)
+do
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = tHead
+	local face = Instance.new("Decal")
+	face.Name = "face"
+	face.Face = Enum.NormalId.Front
+	face.Texture = "rbxasset://textures/face.png"
+	face.Parent = tHead
+end
 -- 시야 표시 (바닥에 빨간 광선 부채꼴)
 for k = -3, 3 do
 	local a = VIEW_ANGLE * k / 3
@@ -208,7 +218,7 @@ spot.Range = VIEW_RANGE
 spot.Brightness = 3
 spot.Color = Color3.fromRGB(255, 90, 110)
 spot.Parent = tHead
-makeBillboard(tHead, "감독관", 2.2, Color3.fromRGB(255, 143, 163))
+makeBillboard(tHead, "뉴비 감독관", 2.2, Color3.fromRGB(255, 143, 163))
 local speech = makeBillboard(tHead, "", 4.5, Color3.fromRGB(201, 24, 74))
 speech.Size = UDim2.fromOffset(420, 60)
 speech.Label.BackgroundTransparency = 0
@@ -433,10 +443,9 @@ endSession = function(player, caught)
 		dead = dead,
 		timeUp = s.timeLeft <= 0,
 	})
-	local i, d = deskOf(player)
+	local _, d = deskOf(player)
 	if d then
 		d.occupant = nil
-		buildNPC(i) -- 빈 자리에 새 학생 입장
 	end
 	sessions[player] = nil
 	if caught then
@@ -459,15 +468,12 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		if sessions[player] or type(arg) ~= "string" then
 			return
 		end
-		-- 자리 고르기: 7번 자리 우선, 아니면 다른 학생 자리
-		local order = { 7, 6, 3, 2, 10, 11, 5, 8, 1, 4, 9, 12 }
+		-- 자리 고르기: 가운데 자리부터 빈자리에 앉음
+		local order = { 6, 7, 2, 3, 10, 11, 5, 8, 1, 4, 9, 12 }
 		local seat
 		for _, i in ipairs(order) do
 			local d = desks[i]
-			if d.occupant ~= nil and typeof(d.occupant) ~= "Instance" and not d.dying then
-				seat = i
-				break
-			elseif d.occupant == nil and not d.dying then
+			if d.occupant == nil and not d.dying then
 				seat = i
 				break
 			end
@@ -548,11 +554,10 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	local i, d = deskOf(player)
+	local _, d = deskOf(player)
 	sessions[player] = nil
 	if d then
 		d.occupant = nil
-		buildNPC(i)
 	end
 end)
 
@@ -659,22 +664,6 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 				task.spawn(catchAt, i)
 				return
-			end
-		end
-	end
-
-	-- NPC 몰래 부정행위
-	for _, d in ipairs(desks) do
-		if d.occupant == "npc" and d.model and not d.dying then
-			local sweat = d.model.Head.Sweat
-			if d.cheating > 0 then
-				d.cheating = d.cheating - dt
-				if d.cheating <= 0 then
-					sweat.Enabled = false
-				end
-			elseif math.random() < dt * 0.06 then
-				d.cheating = 2 + math.random() * 2.5
-				sweat.Enabled = true
 			end
 		end
 	end

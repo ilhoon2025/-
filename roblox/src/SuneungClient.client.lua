@@ -121,8 +121,8 @@ local submitBtn = button({ Parent = paper, Text = "답 제출 ➜", TextSize = 1
 -------------------------------------------------------------------
 -- 영역전개 오버레이
 -------------------------------------------------------------------
-local domain = new("Frame", { Parent = gui, BackgroundColor3 = Color3.fromRGB(4, 10, 26), Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
-new("UIGradient", { Parent = domain, Color = ColorSequence.new(Color3.fromRGB(20, 40, 90), Color3.new(0, 0, 0)), Rotation = 90 })
+-- 배경 없이 사진과 대사만 화면 위에 뜸 (검은 화면 없음)
+local domain = new("Frame", { Parent = gui, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
 local domainImg = new("ImageLabel", { Parent = domain, ZIndex = 51, Image = Shared.DOMAIN_IMAGE, BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.45, 0.5), Position = UDim2.fromScale(0.5, 0.42) })
 local domainText = label({ Parent = domain, ZIndex = 52, Text = "\"" .. Shared.DOMAIN_LINE .. "\"", Font = Enum.Font.GothamBlack, TextSize = 54, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = Color3.fromRGB(76, 201, 240), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -20, 0, 70), Position = UDim2.fromScale(0.5, 0.72) })
 local domainWho = label({ Parent = domain, ZIndex = 52, Text = "", TextSize = 22, TextColor3 = C.accent, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -20, 0, 30), Position = UDim2.fromScale(0.5, 0.84) })
@@ -262,13 +262,11 @@ end)
 local function showDomain(who)
 	domainWho.Text = who .. " 적발!"
 	domainImg.Visible = Shared.DOMAIN_IMAGE ~= "rbxassetid://0"
-	domain.BackgroundTransparency = 1
 	domainImg.ImageTransparency = 1
 	domainText.TextTransparency = 1
 	domainImg.Size = UDim2.fromScale(0.6, 0.65)
 	domain.Visible = true
 	local fast = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(domain, fast, { BackgroundTransparency = 0 }):Play()
 	TweenService:Create(domainImg, fast, { ImageTransparency = 0, Size = UDim2.fromScale(0.45, 0.5) }):Play()
 	TweenService:Create(domainText, fast, { TextTransparency = 0 }):Play()
 	-- 흔들림
@@ -285,7 +283,6 @@ local function showDomain(who)
 	end)
 	task.delay(1.5, function()
 		local slow = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		TweenService:Create(domain, slow, { BackgroundTransparency = 1 }):Play()
 		TweenService:Create(domainImg, slow, { ImageTransparency = 1, Size = UDim2.fromScale(0.3, 0.35) }):Play()
 		TweenService:Create(domainText, slow, { TextTransparency = 1 }):Play()
 		task.wait(0.5)
