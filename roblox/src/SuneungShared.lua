@@ -11,6 +11,24 @@ Shared.TIME_LIMIT = 120
 Shared.CHEAT_TIME = 3 -- 부정행위에 걸리는 시간(초)
 Shared.NUM = { "①", "②", "③", "④", "⑤" }
 
+-- 매점
+Shared.START_MONEY = 10000
+Shared.SHOP = {
+	{ id = "kimbap", name = "삼각김밥", price = 1200, desc = "의심도 -15", sus = -15 },
+	{ id = "ramen", name = "컵라면", price = 1500, desc = "남은 시간 +30초", time = 30 },
+	{ id = "milk", name = "바나나우유", price = 1400, desc = "다음 부정행위 성공률 +30%", luck = 30 },
+	{ id = "choco", name = "초코바", price = 1000, desc = "남은 시간 +15초", time = 15 },
+	{ id = "cola", name = "콜라", price = 1300, desc = "의심도 -10, 시간 +10초", sus = -10, time = 10 },
+	{ id = "energy", name = "에너지드링크", price = 2000, desc = "다음 부정행위 성공률 +50%", luck = 50 },
+}
+function Shared.shopItem(id)
+	for _, it in ipairs(Shared.SHOP) do
+		if it.id == id then
+			return it
+		end
+	end
+end
+
 Shared.BANK = {
 	{ q = "다음 중 대한민국의 수도는?", a = "서울", w = { "부산", "평양", "도쿄", "세종대왕" } },
 	{ q = "7 × 8 = ?", a = "56", w = { "54", "48", "63", "78" } },

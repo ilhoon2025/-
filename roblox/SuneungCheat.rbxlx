@@ -13,6 +13,24 @@ Shared.TIME_LIMIT = 120
 Shared.CHEAT_TIME = 3 -- 부정행위에 걸리는 시간(초)
 Shared.NUM = { "①", "②", "③", "④", "⑤" }
 
+-- 매점
+Shared.START_MONEY = 10000
+Shared.SHOP = {
+	{ id = "kimbap", name = "삼각김밥", price = 1200, desc = "의심도 -15", sus = -15 },
+	{ id = "ramen", name = "컵라면", price = 1500, desc = "남은 시간 +30초", time = 30 },
+	{ id = "milk", name = "바나나우유", price = 1400, desc = "다음 부정행위 성공률 +30%", luck = 30 },
+	{ id = "choco", name = "초코바", price = 1000, desc = "남은 시간 +15초", time = 15 },
+	{ id = "cola", name = "콜라", price = 1300, desc = "의심도 -10, 시간 +10초", sus = -10, time = 10 },
+	{ id = "energy", name = "에너지드링크", price = 2000, desc = "다음 부정행위 성공률 +50%", luck = 50 },
+}
+function Shared.shopItem(id)
+	for _, it in ipairs(Shared.SHOP) do
+		if it.id == id then
+			return it
+		end
+	end
+end
+
 Shared.BANK = {
 	{ q = "다음 중 대한민국의 수도는?", a = "서울", w = { "부산", "평양", "도쿄", "세종대왕" } },
 	{ q = "7 × 8 = ?", a = "56", w = { "54", "48", "63", "78" } },
@@ -130,11 +148,11 @@ remote.Name = "SuneungEvent"
 remote.Parent = ReplicatedStorage
 
 -------------------------------------------------------------------
--- 교실 만들기
+-- 공통 도우미
 -------------------------------------------------------------------
-local room = Instance.new("Folder")
-room.Name = "Classroom"
-room.Parent = workspace
+local world = Instance.new("Folder")
+world.Name = "SuneungWorld"
+world.Parent = workspace
 
 local function part(props)
 	local p = Instance.new("Part")
@@ -146,77 +164,37 @@ local function part(props)
 			p[k] = v
 		end
 	end
-	p.Parent = props.Parent or room
+	p.Parent = props.Parent or world
 	return p
 end
 
-local ROOM_X, ROOM_Z0, ROOM_Z1 = 40, -26, 46
-
-part({ Name = "Floor", Size = Vector3.new(ROOM_X * 2, 1, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(0, -0.5, (ROOM_Z0 + ROOM_Z1) / 2), Color = Color3.fromRGB(176, 138, 98), Material = Enum.Material.WoodPlanks })
-part({ Name = "Ceiling", Size = Vector3.new(ROOM_X * 2, 1, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(0, 16.5, (ROOM_Z0 + ROOM_Z1) / 2), Color = Color3.fromRGB(235, 235, 230) })
-local wallColor = Color3.fromRGB(228, 222, 200)
-part({ Name = "WallL", Size = Vector3.new(1, 16, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(-ROOM_X, 8, (ROOM_Z0 + ROOM_Z1) / 2), Color = wallColor })
-part({ Name = "WallR", Size = Vector3.new(1, 16, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(ROOM_X, 8, (ROOM_Z0 + ROOM_Z1) / 2), Color = wallColor })
-part({ Name = "WallF", Size = Vector3.new(ROOM_X * 2, 16, 1), Position = Vector3.new(0, 8, ROOM_Z0), Color = wallColor })
-part({ Name = "WallB", Size = Vector3.new(ROOM_X * 2, 16, 1), Position = Vector3.new(0, 8, ROOM_Z1), Color = wallColor })
-
--- 천장 조명
-for _, x in ipairs({ -24, 0, 24 }) do
-	for _, z in ipairs({ -12, 8, 28 }) do
-		local lamp = part({ Name = "Lamp", Size = Vector3.new(8, 0.3, 2), Position = Vector3.new(x, 15.9, z), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
-		local light = Instance.new("PointLight")
-		light.Range = 24
-		light.Brightness = 1.2
-		light.Parent = lamp
-	end
+-- 두 점 사이를 채우는 상자
+local function box(x0, y0, z0, x1, y1, z1, props)
+	props = props or {}
+	props.Size = Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0))
+	props.Position = Vector3.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+	return part(props)
 end
 
--- 칠판
-local board = part({ Name = "Blackboard", Size = Vector3.new(44, 8, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
-do
+local function surfaceText(p, face, str, color, font)
 	local sg = Instance.new("SurfaceGui")
-	sg.Face = Enum.NormalId.Back
+	sg.Face = face
 	sg.PixelsPerStud = 40
-	sg.Parent = board
+	sg.Parent = p
 	local t = Instance.new("TextLabel")
 	t.Size = UDim2.fromScale(1, 1)
 	t.BackgroundTransparency = 1
-	t.Text = "2027학년도 대학수학능력시험\n부정행위 적발 시 가루 처리"
-	t.TextColor3 = Color3.fromRGB(233, 245, 238)
-	t.Font = Enum.Font.GothamBlack
+	t.Text = str
+	t.TextColor3 = color
+	t.Font = font or Enum.Font.GothamBold
 	t.TextScaled = true
 	t.Parent = sg
+	return t
 end
 
-Lighting.ClockTime = 14
-Lighting.Brightness = 1
-Lighting.Ambient = Color3.fromRGB(90, 90, 100)
-
--- 스폰 (교실 뒤쪽)
-local spawn = Instance.new("SpawnLocation")
-spawn.Anchored = true
-spawn.Size = Vector3.new(6, 1, 6)
-spawn.Position = Vector3.new(0, 0, ROOM_Z1 - 5)
-spawn.Transparency = 1
-spawn.CanCollide = false
-spawn.Neutral = true
-spawn.Duration = 0
-spawn.Parent = room
-
--------------------------------------------------------------------
--- 책상 & 학생
--------------------------------------------------------------------
-local HAIRS = { Color3.fromRGB(43, 29, 20), Color3.fromRGB(17, 17, 17), Color3.fromRGB(90, 58, 34), Color3.fromRGB(29, 29, 43), Color3.fromRGB(112, 44, 26) }
-local SHIRTS = { Color3.fromRGB(76, 110, 245), Color3.fromRGB(232, 89, 12), Color3.fromRGB(47, 158, 68), Color3.fromRGB(174, 62, 201), Color3.fromRGB(240, 140, 0), Color3.fromRGB(16, 152, 173), Color3.fromRGB(201, 42, 42) }
-local SKIN = Color3.fromRGB(243, 210, 179)
-
-local desks = {} -- { pos = Vector3(학생 자리), occupant = "npc"|Player|nil, model = Model, seed = number }
-local COLS_X = { -26, -13, 0, 13, 26 }
-local ROWS_Z = { -8, 4, 16, 28 }
-
-local function makeBillboard(adornee, text, offsetY, color)
+local function makeBillboard(adornee, str, offsetY, color)
 	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromOffset(120, 36)
+	bb.Size = UDim2.fromOffset(140, 32)
 	bb.StudsOffset = Vector3.new(0, offsetY, 0)
 	bb.AlwaysOnTop = true
 	bb.Adornee = adornee
@@ -224,7 +202,7 @@ local function makeBillboard(adornee, text, offsetY, color)
 	t.Name = "Label"
 	t.Size = UDim2.fromScale(1, 1)
 	t.BackgroundTransparency = 1
-	t.Text = text
+	t.Text = str
 	t.TextColor3 = color or Color3.new(1, 1, 1)
 	t.TextStrokeTransparency = 0.3
 	t.Font = Enum.Font.GothamBold
@@ -234,72 +212,269 @@ local function makeBillboard(adornee, text, offsetY, color)
 	return bb
 end
 
-local function buildDesk(i, pos)
-	local m = Instance.new("Model")
-	m.Name = "Desk" .. i
-	local deskZ = pos.Z - 2.2
-	part({ Parent = m, Name = "Top", Size = Vector3.new(5, 0.4, 3), Position = Vector3.new(pos.X, 3, deskZ), Color = Color3.fromRGB(141, 110, 79), Material = Enum.Material.Wood })
-	for _, dx in ipairs({ -2.2, 2.2 }) do
-		for _, dz in ipairs({ -1.2, 1.2 }) do
-			part({ Parent = m, Size = Vector3.new(0.3, 2.8, 0.3), Position = Vector3.new(pos.X + dx, 1.4, deskZ + dz), Color = Color3.fromRGB(80, 80, 85), Material = Enum.Material.Metal })
+Lighting.ClockTime = 14
+Lighting.Brightness = 2
+Lighting.Ambient = Color3.fromRGB(100, 100, 110)
+Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 150)
+
+-------------------------------------------------------------------
+-- 땅
+-------------------------------------------------------------------
+part({ Name = "Grass", Size = Vector3.new(500, 1, 500), Position = Vector3.new(40, -0.6, 10), Color = Color3.fromRGB(96, 150, 72), Material = Enum.Material.Grass })
+
+-------------------------------------------------------------------
+-- 교실 (넓은 교실 + 창문 + 출입문)
+-------------------------------------------------------------------
+local ROOM_X, ROOM_Z0, ROOM_Z1 = 50, -30, 56
+local WALL_H = 16
+local WALL_C = Color3.fromRGB(228, 222, 200)
+local GLASS = { Color = Color3.fromRGB(170, 210, 235), Material = Enum.Material.Glass, Transparency = 0.6 }
+local DOOR_Z0, DOOR_Z1 = 36, 44
+
+box(-ROOM_X, -1, ROOM_Z0, ROOM_X, 0, ROOM_Z1, { Name = "Floor", Color = Color3.fromRGB(176, 138, 98), Material = Enum.Material.WoodPlanks })
+box(-ROOM_X, WALL_H, ROOM_Z0, ROOM_X, WALL_H + 1, ROOM_Z1, { Name = "Ceiling", Color = Color3.fromRGB(235, 235, 230) })
+
+-- 벽 하나를 창문/문 구멍과 함께 만들기
+-- along = "z" 이면 x=fixed 인 벽, "x" 이면 z=fixed 인 벽
+local function wall(along, fixed, a0, a1, openings)
+	local function seg(b0, b1, y0, y1, props)
+		props = props or { Color = WALL_C }
+		if along == "z" then
+			return box(fixed - 0.5, y0, b0, fixed + 0.5, y1, b1, props)
+		else
+			return box(b0, y0, fixed - 0.5, b1, y1, fixed + 0.5, props)
 		end
 	end
-	part({ Parent = m, Name = "Paper", Size = Vector3.new(2, 0.05, 1.4), Position = Vector3.new(pos.X, 3.23, deskZ), Color = Color3.fromRGB(251, 247, 234) })
-	part({ Parent = m, Name = "Seat", Size = Vector3.new(2.6, 0.3, 2.4), Position = Vector3.new(pos.X, 1.8, pos.Z + 0.3), Color = Color3.fromRGB(141, 110, 79) })
-	part({ Parent = m, Name = "Back", Size = Vector3.new(2.6, 2.4, 0.3), Position = Vector3.new(pos.X, 3.1, pos.Z + 1.5), Color = Color3.fromRGB(141, 110, 79) })
-	m.Parent = room
-	return m
+	seg(a0, a1, 11, WALL_H) -- 위쪽 띠
+	table.sort(openings, function(p, q)
+		return p[1] < q[1]
+	end)
+	local cur = a0
+	for _, o in ipairs(openings) do
+		if o[1] > cur then
+			seg(cur, o[1], 0, 11)
+		end
+		if o[3] == "door" then
+			seg(o[1], o[2], 10, 11)
+		else
+			seg(o[1], o[2], 0, 4) -- 창틀 아래
+			seg(o[1], o[2], 4, 11, { Color = GLASS.Color, Material = GLASS.Material, Transparency = GLASS.Transparency, Name = "Window" })
+		end
+		cur = o[2]
+	end
+	if cur < a1 then
+		seg(cur, a1, 0, 11)
+	end
 end
 
-local function buildNPC(i)
-	local d = desks[i]
-	local m = Instance.new("Model")
-	m.Name = "Student" .. i
-	local x, z = d.pos.X, d.pos.Z
-	local shirt = SHIRTS[(i * 3) % #SHIRTS + 1]
-	part({ Parent = m, Name = "LegL", Size = Vector3.new(0.9, 0.9, 2), Position = Vector3.new(x - 0.5, 2.4, z - 0.5), Color = Color3.fromRGB(40, 45, 70) })
-	part({ Parent = m, Name = "LegR", Size = Vector3.new(0.9, 0.9, 2), Position = Vector3.new(x + 0.5, 2.4, z - 0.5), Color = Color3.fromRGB(40, 45, 70) })
-	local torso = part({ Parent = m, Name = "Torso", Size = Vector3.new(2, 2, 1), Position = Vector3.new(x, 3.9, z + 0.4), Color = shirt })
-	part({ Parent = m, Name = "ArmL", Size = Vector3.new(0.8, 0.8, 2), Position = Vector3.new(x - 1.4, 4.1, z - 0.4), Color = shirt })
-	part({ Parent = m, Name = "ArmR", Size = Vector3.new(0.8, 0.8, 2), Position = Vector3.new(x + 1.4, 4.1, z - 0.4), Color = shirt })
-	local head = part({ Parent = m, Name = "Head", Size = Vector3.new(1.6, 1.6, 1.6), Position = Vector3.new(x, 5.7, z + 0.4), Color = SKIN, Shape = Enum.PartType.Ball })
-	part({ Parent = m, Name = "Hair", Size = Vector3.new(1.75, 0.7, 1.75), Position = Vector3.new(x, 6.4, z + 0.5), Color = HAIRS[(i * 7) % #HAIRS + 1] })
-	-- 눈 (칠판 쪽 = -Z 방향)
-	for _, dx in ipairs({ -0.3, 0.3 }) do
-		part({ Parent = m, Name = "Eye", Size = Vector3.new(0.18, 0.25, 0.1), Position = Vector3.new(x + dx, 5.8, z - 0.38), Color = Color3.new(0.1, 0.1, 0.1) })
+local function windowsAlong(a0, a1, every, width, skip0, skip1)
+	local list = {}
+	local c = a0 + every / 2
+	while c + width / 2 < a1 do
+		local w0, w1 = c - width / 2, c + width / 2
+		if not (skip0 and w1 > skip0 - 2 and w0 < skip1 + 2) then
+			table.insert(list, { w0, w1 })
+		end
+		c = c + every
 	end
-	makeBillboard(head, i .. "번", 2.2, Color3.fromRGB(200, 205, 225))
-	local sweat = makeBillboard(head, "부정행위 중", 3.4, Color3.fromRGB(255, 200, 87))
-	sweat.Name = "Sweat"
-	sweat.Enabled = false
-	m.PrimaryPart = torso
-	m.Parent = room
-	d.model = m
-	d.occupant = "npc"
-	d.cheating = 0
+	return list
+end
+
+wall("z", -ROOM_X, ROOM_Z0, ROOM_Z1, windowsAlong(ROOM_Z0, ROOM_Z1, 14, 9))
+do
+	local rightOpen = windowsAlong(ROOM_Z0, ROOM_Z1, 14, 9, DOOR_Z0, DOOR_Z1)
+	table.insert(rightOpen, { DOOR_Z0, DOOR_Z1, "door" })
+	wall("z", ROOM_X, ROOM_Z0, ROOM_Z1, rightOpen)
+end
+wall("x", ROOM_Z1, -ROOM_X - 0.5, ROOM_X + 0.5, windowsAlong(-ROOM_X, ROOM_X, 14, 9))
+wall("x", ROOM_Z0, -ROOM_X - 0.5, ROOM_X + 0.5, {})
+
+-- 문틀 & 표지판
+box(ROOM_X - 0.7, 0, DOOR_Z0 - 0.6, ROOM_X + 0.7, 10.6, DOOR_Z0, { Color = Color3.fromRGB(90, 70, 50) })
+box(ROOM_X - 0.7, 0, DOOR_Z1, ROOM_X + 0.7, 10.6, DOOR_Z1 + 0.6, { Color = Color3.fromRGB(90, 70, 50) })
+local doorSign = box(ROOM_X - 0.8, 11.2, DOOR_Z0, ROOM_X - 0.6, 12.8, DOOR_Z1, { Color = Color3.fromRGB(30, 58, 138) })
+surfaceText(doorSign, Enum.NormalId.Left, "출입문", Color3.new(1, 1, 1))
+
+-- 천장 조명
+for _, x in ipairs({ -30, 0, 30 }) do
+	for _, z in ipairs({ -14, 10, 34 }) do
+		local lamp = part({ Name = "Lamp", Size = Vector3.new(10, 0.3, 2), Position = Vector3.new(x, WALL_H - 0.2, z), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
+		local light = Instance.new("PointLight")
+		light.Range = 26
+		light.Brightness = 1.2
+		light.Parent = lamp
+	end
+end
+
+-- 칠판
+local board = part({ Name = "Blackboard", Size = Vector3.new(56, 8, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
+surfaceText(board, Enum.NormalId.Back, "2027학년도 대학수학능력시험\n부정행위 적발 시 가루 처리", Color3.fromRGB(233, 245, 238), Enum.Font.GothamBlack)
+
+-- 스폰 (교실 뒤쪽)
+local spawn = Instance.new("SpawnLocation")
+spawn.Anchored = true
+spawn.Size = Vector3.new(6, 1, 6)
+spawn.Position = Vector3.new(0, 0, ROOM_Z1 - 6)
+spawn.Transparency = 1
+spawn.CanCollide = false
+spawn.Neutral = true
+spawn.Duration = 0
+spawn.Parent = world
+
+-------------------------------------------------------------------
+-- 책상
+-------------------------------------------------------------------
+local desks = {} -- { pos, occupant = Player|nil, seed, dying }
+local COLS_X = { -35, -21, -7, 7, 21, 35 }
+local ROWS_Z = { -12, 2, 16, 30 }
+
+local function buildDesk(pos)
+	local deskZ = pos.Z - 2.2
+	part({ Size = Vector3.new(5, 0.4, 3), Position = Vector3.new(pos.X, 3, deskZ), Color = Color3.fromRGB(141, 110, 79), Material = Enum.Material.Wood })
+	for _, dx in ipairs({ -2.2, 2.2 }) do
+		for _, dz in ipairs({ -1.2, 1.2 }) do
+			part({ Size = Vector3.new(0.3, 2.8, 0.3), Position = Vector3.new(pos.X + dx, 1.4, deskZ + dz), Color = Color3.fromRGB(80, 80, 85), Material = Enum.Material.Metal })
+		end
+	end
+	part({ Size = Vector3.new(2, 0.05, 1.4), Position = Vector3.new(pos.X, 3.23, deskZ), Color = Color3.fromRGB(251, 247, 234) })
+	part({ Size = Vector3.new(2.6, 0.3, 2.4), Position = Vector3.new(pos.X, 1.8, pos.Z + 0.3), Color = Color3.fromRGB(141, 110, 79) })
+	part({ Size = Vector3.new(2.6, 2.4, 0.3), Position = Vector3.new(pos.X, 3.1, pos.Z + 1.5), Color = Color3.fromRGB(141, 110, 79) })
 end
 
 for r, z in ipairs(ROWS_Z) do
 	for c, x in ipairs(COLS_X) do
 		local i = (r - 1) * #COLS_X + c
 		desks[i] = { pos = Vector3.new(x, 0, z), seed = 1000 + i * 97 }
-		buildDesk(i, desks[i].pos)
-		-- AI 학생 없음: 플레이어가 들어와서 앉음
+		buildDesk(desks[i].pos)
 	end
 end
 
 -------------------------------------------------------------------
--- 감독관
+-- 도로 & 차
+-------------------------------------------------------------------
+local ROAD_X0, ROAD_X1 = 62, 90
+local ROAD_LEN = 340
+box(ROOM_X, -0.2, -ROAD_LEN / 2, ROAD_X0, 0.3, ROAD_LEN / 2, { Name = "Sidewalk", Color = Color3.fromRGB(190, 190, 185), Material = Enum.Material.Concrete })
+box(ROAD_X0, -0.2, -ROAD_LEN / 2, ROAD_X1, 0.05, ROAD_LEN / 2, { Name = "Road", Color = Color3.fromRGB(55, 57, 62), Material = Enum.Material.Asphalt })
+box(ROAD_X1, -0.2, -ROAD_LEN / 2, ROAD_X1 + 8, 0.3, ROAD_LEN / 2, { Name = "Sidewalk2", Color = Color3.fromRGB(190, 190, 185), Material = Enum.Material.Concrete })
+-- 중앙선
+box(75.7, 0.05, -ROAD_LEN / 2, 76.3, 0.1, ROAD_LEN / 2, { Color = Color3.fromRGB(240, 190, 40), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+-- 차선
+for z = -ROAD_LEN / 2, ROAD_LEN / 2 - 8, 14 do
+	for _, x in ipairs({ 69, 83 }) do
+		box(x - 0.2, 0.05, z, x + 0.2, 0.1, z + 7, { Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+	end
+end
+-- 횡단보도 (차는 안 멈춤)
+for x = ROAD_X0 + 1, ROAD_X1 - 2, 3 do
+	box(x, 0.05, DOOR_Z0 - 2, x + 1.6, 0.1, DOOR_Z1 + 2, { Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+end
+
+-- 차선: x 위치, 방향(+1 = +Z 쪽으로)
+local LANES = { { x = 65.5, dir = 1 }, { x = 72.5, dir = 1 }, { x = 79.5, dir = -1 }, { x = 86.5, dir = -1 } }
+local CAR_COLORS = { Color3.fromRGB(200, 40, 40), Color3.fromRGB(30, 60, 160), Color3.fromRGB(240, 240, 240), Color3.fromRGB(30, 30, 30), Color3.fromRGB(240, 190, 30), Color3.fromRGB(40, 140, 80), Color3.fromRGB(150, 150, 155) }
+local carFolder = Instance.new("Folder")
+carFolder.Name = "Cars"
+carFolder.Parent = world
+local cars = {}
+
+local function buildCar(color)
+	local m = Instance.new("Model")
+	m.Name = "Car"
+	local body = part({ Parent = m, Name = "Body", Size = Vector3.new(6, 2, 12), CFrame = CFrame.new(0, 1.8, 0), Color = color, CanCollide = false, Material = Enum.Material.SmoothPlastic })
+	part({ Parent = m, Size = Vector3.new(5.4, 1.8, 6), CFrame = CFrame.new(0, 3.7, 0.8), Color = Color3.fromRGB(40, 50, 60), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = false })
+	for _, x in ipairs({ -2.8, 2.8 }) do
+		for _, z in ipairs({ -3.8, 3.8 }) do
+			local w = part({ Parent = m, Size = Vector3.new(0.8, 2, 2), CFrame = CFrame.new(x, 1, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(20, 20, 20), Shape = Enum.PartType.Cylinder, CanCollide = false })
+			w.Size = Vector3.new(0.8, 2, 2)
+		end
+	end
+	for _, x in ipairs({ -2, 2 }) do
+		part({ Parent = m, Size = Vector3.new(1.2, 0.6, 0.2), CFrame = CFrame.new(x, 2, -6.05), Color = Color3.fromRGB(255, 250, 220), Material = Enum.Material.Neon, CanCollide = false })
+		part({ Parent = m, Size = Vector3.new(1.2, 0.6, 0.2), CFrame = CFrame.new(x, 2, 6.05), Color = Color3.fromRGB(220, 30, 30), Material = Enum.Material.Neon, CanCollide = false })
+	end
+	m.PrimaryPart = body
+	return m
+end
+
+local function spawnCar(lane)
+	local m = buildCar(CAR_COLORS[math.random(1, #CAR_COLORS)])
+	local z = -lane.dir * ROAD_LEN / 2
+	local car = { model = m, lane = lane, z = z, speed = math.random(40, 75) }
+	m:PivotTo(CFrame.new(lane.x, 0, z) * CFrame.Angles(0, lane.dir == 1 and math.pi or 0, 0))
+	m.Parent = carFolder
+	table.insert(cars, car)
+end
+
+for _, lane in ipairs(LANES) do
+	lane.next = math.random() * 2
+end
+
+-------------------------------------------------------------------
+-- 매점
+-------------------------------------------------------------------
+local SX0, SX1, SZ0, SZ1 = ROAD_X1 + 10, ROAD_X1 + 46, 16, 64
+local SDOOR0, SDOOR1 = 36, 44
+local storeWall = Color3.fromRGB(245, 240, 230)
+box(SX0, -0.2, SZ0, SX1, 0.2, SZ1, { Name = "StoreFloor", Color = Color3.fromRGB(220, 220, 225), Material = Enum.Material.Marble })
+box(SX0, 12, SZ0, SX1, 13, SZ1, { Name = "StoreRoof", Color = Color3.fromRGB(200, 70, 60) })
+-- 앞벽 (도로 쪽, 유리문 구멍)
+box(SX0, 0, SZ0, SX0 + 1, 12, SDOOR0, { Color = storeWall })
+box(SX0, 0, SDOOR1, SX0 + 1, 12, SZ1, { Color = storeWall })
+box(SX0, 9, SDOOR0, SX0 + 1, 12, SDOOR1, { Color = storeWall })
+box(SX0, 3, SZ0 + 4, SX0 + 1.1, 8, SDOOR0 - 3, GLASS)
+box(SX0, 3, SDOOR1 + 3, SX0 + 1.1, 8, SZ1 - 4, GLASS)
+box(SX1 - 1, 0, SZ0, SX1, 12, SZ1, { Color = storeWall })
+box(SX0, 0, SZ0, SX1, 12, SZ0 + 1, { Color = storeWall })
+box(SX0, 0, SZ1 - 1, SX1, 12, SZ1, { Color = storeWall })
+local sign = box(SX0 - 0.6, 12.5, SZ0 + 8, SX0 - 0.2, 17, SZ1 - 8, { Color = Color3.fromRGB(200, 40, 40) })
+surfaceText(sign, Enum.NormalId.Left, "매점", Color3.new(1, 1, 1), Enum.Font.GothamBlack)
+do
+	local lamp = part({ Size = Vector3.new(16, 0.3, 2), Position = Vector3.new((SX0 + SX1) / 2, 11.8, 40), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
+	local light = Instance.new("PointLight")
+	light.Range = 30
+	light.Brightness = 1.5
+	light.Parent = lamp
+end
+-- 선반과 상품
+local PRODUCT_C = { Color3.fromRGB(240, 200, 60), Color3.fromRGB(220, 60, 60), Color3.fromRGB(60, 140, 220), Color3.fromRGB(250, 240, 200), Color3.fromRGB(120, 70, 40), Color3.fromRGB(60, 180, 90) }
+for _, z in ipairs({ SZ0 + 6, SZ1 - 6 }) do
+	box(SX0 + 12, 0, z - 1.5, SX1 - 4, 7, z + 1.5, { Color = Color3.fromRGB(180, 180, 185), Material = Enum.Material.Metal })
+	for x = SX0 + 13, SX1 - 6, 2 do
+		for _, y in ipairs({ 2.5, 5 }) do
+			part({ Size = Vector3.new(1.4, 1.6, 1), Position = Vector3.new(x, y + 2.3 - 2.3 + 0.8, z - 1.9), Color = PRODUCT_C[math.random(1, #PRODUCT_C)] })
+		end
+	end
+end
+-- 계산대
+local counter = box(SX1 - 12, 0, 34, SX1 - 8, 4, 46, { Name = "Counter", Color = Color3.fromRGB(120, 90, 60), Material = Enum.Material.Wood })
+local prompt = Instance.new("ProximityPrompt")
+prompt.ActionText = "물건 사기"
+prompt.ObjectText = "매점"
+prompt.HoldDuration = 0
+prompt.MaxActivationDistance = 12
+prompt.RequiresLineOfSight = false
+prompt.Parent = counter
+-- 매점 주인 (블록 캐릭터)
+do
+	local cx, cz = SX1 - 5, 40
+	part({ Size = Vector3.new(2, 2.5, 1), Position = Vector3.new(cx, 1.25, cz), Color = Color3.fromRGB(40, 40, 60) })
+	part({ Size = Vector3.new(2, 2, 1), Position = Vector3.new(cx, 3.5, cz), Color = Color3.fromRGB(230, 120, 40) })
+	local h = part({ Size = Vector3.new(1.6, 1.6, 1.6), Position = Vector3.new(cx, 5.3, cz), Color = Color3.fromRGB(243, 210, 179), Shape = Enum.PartType.Ball })
+	makeBillboard(h, "매점 아주머니", 2, Color3.fromRGB(255, 230, 180))
+end
+
+-------------------------------------------------------------------
+-- 뉴비 감독관
 -------------------------------------------------------------------
 local VIEW_RANGE = 34
 local VIEW_ANGLE = math.rad(32)
-
-local teacher = Instance.new("Model")
-teacher.Name = "Teacher"
--- 뉴비 감독관: 노란 머리·팔, 파란 몸통, 초록 다리
 local NOOB_YELLOW = Color3.fromRGB(245, 205, 48)
 local NOOB_BLUE = Color3.fromRGB(13, 105, 172)
 local NOOB_GREEN = Color3.fromRGB(75, 151, 75)
+
+local teacher = Instance.new("Model")
+teacher.Name = "Teacher"
 local tRoot = part({ Parent = teacher, Name = "Root", Size = Vector3.new(2, 2, 1), Position = Vector3.new(0, 4.5, 0), Color = NOOB_BLUE, CanCollide = false })
 local function tPart(name, size, offset, color)
 	return part({ Parent = teacher, Name = name, Size = size, CFrame = tRoot.CFrame * CFrame.new(offset), Color = color, CanCollide = false })
@@ -320,7 +495,6 @@ do
 	face.Texture = "rbxasset://textures/face.png"
 	face.Parent = tHead
 end
--- 시야 표시 (바닥에 빨간 광선 부채꼴)
 for k = -3, 3 do
 	local a = VIEW_ANGLE * k / 3
 	local dir = Vector3.new(math.sin(a), 0, -math.cos(a))
@@ -342,36 +516,59 @@ speech.Label.BackgroundTransparency = 0
 speech.Label.BackgroundColor3 = Color3.new(1, 1, 1)
 speech.Enabled = false
 teacher.PrimaryPart = tRoot
-teacher.Parent = room
+teacher.Parent = world
 
-local tState = { pos = Vector3.new(0, 4.5, ROOM_Z0 + 5), look = 0, target = nil, wait = 2 }
-local freeze = 0 -- 영역전개 중에는 모두 멈춤
+local tState = { pos = Vector3.new(0, 4.5, ROOM_Z0 + 6), look = 0, target = nil, wait = 2 }
+local freeze = 0
 
 local function teacherCF()
 	return CFrame.new(tState.pos) * CFrame.Angles(0, tState.look, 0)
 end
 teacher:PivotTo(teacherCF())
 
+local function inRoom(pos)
+	return math.abs(pos.X) < ROOM_X and pos.Z > ROOM_Z0 and pos.Z < ROOM_Z1
+end
+
 local function teacherSees(pos)
-	local cf = teacherCF()
+	if not inRoom(pos) then
+		return false
+	end
 	local v = pos - tState.pos
 	v = Vector3.new(v.X, 0, v.Z)
-	if v.Magnitude > VIEW_RANGE or v.Magnitude < 0.01 then
-		return v.Magnitude < 3
+	if v.Magnitude < 3 then
+		return true
 	end
-	local look = cf.LookVector
+	if v.Magnitude > VIEW_RANGE then
+		return false
+	end
+	local look = teacherCF().LookVector
 	look = Vector3.new(look.X, 0, look.Z).Unit
 	return math.acos(math.clamp(look:Dot(v.Unit), -1, 1)) < VIEW_ANGLE
 end
 
 -------------------------------------------------------------------
--- 시험 세션
+-- 플레이어 데이터
 -------------------------------------------------------------------
-local sessions = {} -- [player] = session
+local sessions = {} -- [player] = 시험 상태
+local inventory = {} -- [player] = { [id] = 개수 }
 
-local function filterFor(player, text)
+local function moneyOf(player)
+	local ls = player:FindFirstChild("leaderstats")
+	return ls and ls:FindFirstChild("돈")
+end
+
+local function toast(player, msg)
+	remote:FireClient(player, "Toast", msg)
+end
+
+local function sendInventory(player)
+	remote:FireClient(player, "Inventory", inventory[player] or {})
+end
+
+local function filterFor(player, str)
 	local ok, res = pcall(function()
-		local r = TextService:FilterStringAsync(text, player.UserId)
+		local r = TextService:FilterStringAsync(str, player.UserId)
 		return r:GetNonChatStringForUserAsync(player.UserId)
 	end)
 	if ok and res then
@@ -380,8 +577,8 @@ local function filterFor(player, text)
 	return "???"
 end
 
-local function logAll(text)
-	remote:FireAllClients("Log", text)
+local function logAll(str)
+	remote:FireAllClients("Log", str)
 end
 
 local function deskOf(player)
@@ -404,10 +601,17 @@ local function sendQuestion(player, s)
 	})
 end
 
+local function getParts(player)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	return char, hum, hrp
+end
+
 -- 가루 효과
-local function dustParts(parts)
+local function dustParts(list)
 	local count = 0
-	for _, p in ipairs(parts) do
+	for _, p in ipairs(list) do
 		if p:IsA("BasePart") and p.Transparency < 0.9 and p.Name ~= "Sight" then
 			local n = math.clamp(math.floor(p.Size.Magnitude * 6), 6, 30)
 			for _ = 1, n do
@@ -441,64 +645,97 @@ local function dustParts(parts)
 					c.Enabled = false
 				end
 			end
-		elseif p:IsA("Accessory") then
-			local h = p:FindFirstChild("Handle")
-			if h then
-				h.Transparency = 1
-			end
 		end
 	end
 end
 
-local endSession
+local function seatPlayer(player, i)
+	local _, hum, hrp = getParts(player)
+	if hrp and hum then
+		hum.WalkSpeed = 0
+		hum.UseJumpPower = true
+		hum.JumpPower = 0
+		local p = desks[i].pos
+		hrp.CFrame = CFrame.new(p.X, 3.2, p.Z + 0.3)
+		hrp.Anchored = true
+	end
+end
 
-local function catchAt(deskIndex)
+local function freePlayer(player, where)
+	local _, hum, hrp = getParts(player)
+	if hrp and hum then
+		hrp.Anchored = false
+		hum.WalkSpeed = 16
+		hum.UseJumpPower = true
+		hum.JumpPower = 50
+		if where then
+			hrp.CFrame = where
+		end
+	end
+end
+
+-- reason: nil(정상 종료/시간 종료) | "caught" | "car"
+local function endSession(player, reason)
+	local s = sessions[player]
+	if not s or s.ended then
+		return
+	end
+	s.ended = true
+	remote:FireClient(player, "End", {
+		reason = reason,
+		score = s.score,
+		answered = s.qi - 1,
+		grade = Shared.grade(s.score),
+		timeUp = s.timeLeft <= 0,
+	})
+	local _, d = deskOf(player)
+	if d then
+		d.occupant = nil
+	end
+	sessions[player] = nil
+	if reason == "caught" then
+		player:LoadCharacter()
+	elseif reason == nil then
+		freePlayer(player, CFrame.new(0, 3, ROOM_Z1 - 6))
+	end
+end
+
+local function catchAt(deskIndex, victim)
 	local d = desks[deskIndex]
 	if not d or d.dying then
 		return
 	end
 	d.dying = true
 	freeze = freeze + 1
-	local victim = d.occupant
-	local isPlayer = typeof(victim) == "Instance" and victim:IsA("Player")
-	local name = isPlayer and victim.DisplayName or (deskIndex .. "번 학생")
-
-	-- 감독관이 학생을 바라봄
-	local v = d.pos - tState.pos
+	local s = sessions[victim]
+	if s then
+		s.cheating = false
+	end
+	local _, _, hrp = getParts(victim)
+	local target = (s and s.away and hrp) and hrp.Position or d.pos
+	local v = target - tState.pos
 	tState.look = math.atan2(-v.X, -v.Z)
 	teacher:PivotTo(teacherCF())
 	speech.Label.Text = Shared.DOMAIN_LINE
 	speech.Enabled = true
-	logAll(name .. " 적발")
-	remote:FireAllClients("Domain", name)
+	logAll(victim.DisplayName .. " 적발")
+	remote:FireAllClients("Domain", victim.DisplayName)
 
 	task.wait(2)
 	speech.Enabled = false
-	if isPlayer then
-		local char = victim.Character
-		if char then
-			for _, p in ipairs(char:GetDescendants()) do
-				if p:IsA("BasePart") then
-					p.Anchored = true
-				end
+	local char = victim.Character
+	if char then
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.Anchored = true
 			end
-			dustParts(char:GetDescendants())
 		end
-	elseif d.model then
-		local m = d.model
-		dustParts(m:GetDescendants())
-		task.delay(4, function()
-			m:Destroy()
-		end)
-		d.model = nil
-		d.occupant = nil
+		dustParts(char:GetDescendants())
 	end
 	freeze = freeze - 1
 	d.dying = false
-	if isPlayer then
-		task.wait(2.5)
-		endSession(victim, true)
-	end
+	task.wait(2.5)
+	endSession(victim, "caught")
 end
 
 local function nearestNeighbor(deskIndex)
@@ -507,7 +744,7 @@ local function nearestNeighbor(deskIndex)
 	for i, d in ipairs(desks) do
 		if i ~= deskIndex and d.occupant and not d.dying then
 			local dist = (d.pos - me.pos).Magnitude
-			if dist < 14 and (not bestD or dist < bestD) then
+			if dist < 20 and (not bestD or dist < bestD) then
 				best, bestD = i, dist
 			end
 		end
@@ -517,75 +754,58 @@ end
 
 local function seedOf(i)
 	local d = desks[i]
-	if typeof(d.occupant) == "Instance" and sessions[d.occupant] then
+	if d.occupant and sessions[d.occupant] then
 		return sessions[d.occupant].seed
 	end
 	return d.seed
 end
 
-local function seatPlayer(player, i)
-	local char = player.Character
-	if not char then
-		return
-	end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if hrp and hum then
-		hum.WalkSpeed = 0
-		hum.JumpPower = 0
-		hum.UseJumpPower = true
-		hrp.Anchored = true
-		local p = desks[i].pos
-		hrp.CFrame = CFrame.new(p.X, 3.2, p.Z + 0.3) * CFrame.Angles(0, 0, 0)
-	end
-end
+-------------------------------------------------------------------
+-- 접속 / 캐릭터
+-------------------------------------------------------------------
+Players.PlayerAdded:Connect(function(player)
+	local ls = Instance.new("Folder")
+	ls.Name = "leaderstats"
+	local money = Instance.new("IntValue")
+	money.Name = "돈"
+	money.Value = Shared.START_MONEY
+	money.Parent = ls
+	ls.Parent = player
+	inventory[player] = {}
+	player.CharacterAdded:Connect(function(char)
+		local hum = char:WaitForChild("Humanoid")
+		hum.Died:Connect(function()
+			local s = sessions[player]
+			if s and not s.ended then
+				endSession(player, s.deathReason or "car")
+			end
+		end)
+	end)
+end)
 
-endSession = function(player, caught)
-	local s = sessions[player]
-	if not s or s.ended then
-		return
-	end
-	s.ended = true
-	local dead = 0
-	for _, d in ipairs(desks) do
-		if not d.occupant then
-			dead = dead + 1
-		end
-	end
-	remote:FireClient(player, "End", {
-		caught = caught,
-		score = s.score,
-		answered = s.qi - 1,
-		grade = Shared.grade(s.score),
-		dead = dead,
-		timeUp = s.timeLeft <= 0,
-	})
+Players.PlayerRemoving:Connect(function(player)
 	local _, d = deskOf(player)
+	sessions[player] = nil
+	inventory[player] = nil
 	if d then
 		d.occupant = nil
 	end
-	sessions[player] = nil
-	if caught then
-		player:LoadCharacter()
-	else
-		local char = player.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local hrp = char and char:FindFirstChild("HumanoidRootPart")
-		if hum and hrp then
-			hrp.Anchored = false
-			hum.WalkSpeed = 16
-			hum.JumpPower = 50
-			hrp.CFrame = CFrame.new(0, 3, ROOM_Z1 - 5)
-		end
-	end
-end
+end)
 
+prompt.Triggered:Connect(function(player)
+	local m = moneyOf(player)
+	remote:FireClient(player, "OpenShop", m and m.Value or 0)
+end)
+
+-------------------------------------------------------------------
+-- 클라이언트 요청
+-------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg)
+	local s = sessions[player]
 	if action == "Start" then
-		if sessions[player] or type(arg) ~= "string" then
+		if s or type(arg) ~= "string" then
 			return
 		end
-		-- 자리 고르기: 가운데 자리부터 빈자리에 앉음
 		local order = {}
 		for i = 1, #desks do
 			order[i] = i
@@ -595,22 +815,16 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		end)
 		local seat
 		for _, i in ipairs(order) do
-			local d = desks[i]
-			if d.occupant == nil and not d.dying then
+			if desks[i].occupant == nil and not desks[i].dying then
 				seat = i
 				break
 			end
 		end
 		if not seat then
+			toast(player, "빈자리가 없습니다.")
 			return
 		end
-		local d = desks[seat]
-		if d.model then
-			d.model:Destroy()
-			d.model = nil
-		end
-		d.occupant = player
-		-- 문제 뽑기
+		desks[seat].occupant = player
 		local idx = {}
 		for k = 1, #Shared.BANK do
 			idx[k] = k
@@ -631,7 +845,10 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			score = 0,
 			timeLeft = Shared.TIME_LIMIT,
 			suspicion = 0,
+			luck = 0,
 			cheating = false,
+			away = false,
+			nextEmptyCheck = 0,
 			cheat = Shared.makeCheat(cheatName),
 			cheatShown = filterFor(player, cheatName),
 			desk = seat,
@@ -640,8 +857,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		logAll(player.DisplayName .. " 입실 (" .. seat .. "번 자리)")
 		sendQuestion(player, sessions[player])
 	elseif action == "Answer" then
-		local s = sessions[player]
-		if not s or s.ended or freeze > 0 or type(arg) ~= "number" then
+		if not s or s.ended or s.away or freeze > 0 or type(arg) ~= "number" then
 			return
 		end
 		local _, correct = Shared.paperFor(s.seed, s.questions[s.qi])
@@ -650,13 +866,12 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		end
 		s.qi = s.qi + 1
 		if s.qi > Shared.TOTAL_Q then
-			endSession(player, false)
+			endSession(player, nil)
 		else
 			sendQuestion(player, s)
 		end
 	elseif action == "Cheat" then
-		local s = sessions[player]
-		if not s or s.ended or s.cheating or freeze > 0 then
+		if not s or s.ended or s.cheating or s.away or freeze > 0 then
 			return
 		end
 		if type(arg) == "string" and arg ~= s.cheat.name then
@@ -667,81 +882,172 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		s.cheating = true
 		s.cheatEnd = os.clock() + Shared.CHEAT_TIME
 		remote:FireClient(player, "CheatStart", Shared.CHEAT_TIME)
-		local char = player.Character
-		local head = char and char:FindFirstChild("Head")
-		if head and not head:FindFirstChild("Sweat") then
-			local bb = makeBillboard(head, "!", 2.5, Color3.fromRGB(255, 200, 87))
-			bb.Name = "Sweat"
+	elseif action == "Leave" then
+		-- 몰래 자리 비우기
+		if not s or s.ended or s.away or s.cheating or freeze > 0 then
+			return
 		end
-	end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-	local _, d = deskOf(player)
-	sessions[player] = nil
-	if d then
-		d.occupant = nil
+		s.away = true
+		local p = desks[s.desk].pos
+		freePlayer(player, CFrame.new(p.X + 7, 3, p.Z))
+		local _, hum = getParts(player)
+		if hum then
+			hum.WalkSpeed = 14
+		end
+		remote:FireClient(player, "Away", true)
+	elseif action == "Return" then
+		if not s or s.ended or not s.away then
+			return
+		end
+		local _, _, hrp = getParts(player)
+		if not hrp or (hrp.Position - desks[s.desk].pos).Magnitude > 10 then
+			toast(player, "자기 자리(" .. s.desk .. "번) 가까이 가야 앉을 수 있어요.")
+			return
+		end
+		s.away = false
+		seatPlayer(player, s.desk)
+		remote:FireClient(player, "Away", false)
+	elseif action == "Buy" then
+		local item = type(arg) == "string" and Shared.shopItem(arg)
+		local m = moneyOf(player)
+		local _, _, hrp = getParts(player)
+		if not item or not m or not hrp then
+			return
+		end
+		if (hrp.Position - counter.Position).Magnitude > 18 then
+			toast(player, "계산대 가까이 가야 살 수 있어요.")
+			return
+		end
+		if m.Value < item.price then
+			toast(player, "돈이 부족해요.")
+			return
+		end
+		m.Value = m.Value - item.price
+		local inv = inventory[player]
+		inv[item.id] = (inv[item.id] or 0) + 1
+		sendInventory(player)
+		remote:FireClient(player, "Money", m.Value)
+		toast(player, item.name .. " 구매 완료")
+	elseif action == "Eat" then
+		local item = type(arg) == "string" and Shared.shopItem(arg)
+		local inv = inventory[player]
+		if not item or not inv or (inv[item.id] or 0) <= 0 then
+			return
+		end
+		inv[item.id] = inv[item.id] - 1
+		if inv[item.id] <= 0 then
+			inv[item.id] = nil
+		end
+		if s and not s.ended then
+			if item.time then
+				s.timeLeft = s.timeLeft + item.time
+			end
+			if item.sus then
+				s.suspicion = math.max(0, s.suspicion + item.sus)
+			end
+			if item.luck then
+				s.luck = math.min(100, s.luck + item.luck)
+			end
+			remote:FireClient(player, "Timer", s.timeLeft, s.suspicion)
+			toast(player, item.name .. " 냠냠 (" .. item.desc .. ")")
+		else
+			toast(player, item.name .. " 냠냠. 효과는 시험 중에만 있어요.")
+		end
+		sendInventory(player)
 	end
 end)
 
 -- 부정행위 끝났을 때
 local function finishCheat(player, s)
 	s.cheating = false
-	local char = player.Character
-	local head = char and char:FindFirstChild("Head")
-	if head and head:FindFirstChild("Sweat") then
-		head.Sweat:Destroy()
-	end
 	s.suspicion = math.min(100, s.suspicion + math.floor(s.cheat.risk / 3))
 	if math.random() * 100 < s.cheat.risk * (0.4 + s.suspicion / 150) then
-		task.spawn(catchAt, s.desk)
+		task.spawn(catchAt, s.desk, player)
 		return
 	end
 	local qIndex = s.questions[s.qi]
 	local _, mine = Shared.paperFor(s.seed, qIndex)
-	local text
+	local msg
 	if s.cheat.copy then
 		local n = nearestNeighbor(s.desk)
 		if n then
 			local _, theirs = Shared.paperFor(seedOf(n), qIndex)
-			text = n .. "번 자리 답안: " .. Shared.NUM[theirs] .. "번  (시험지 유형이 다를 수 있음)"
+			msg = n .. "번 자리 답안: " .. Shared.NUM[theirs] .. "번  (시험지 유형이 다를 수 있음)"
 		else
-			text = "주변에 살아있는 친구가 없다…"
+			msg = "주변에 다른 수험생이 없다."
 		end
 	else
 		local ans = mine
-		if math.random() * 100 >= s.cheat.success then
+		if math.random() * 100 >= math.min(100, s.cheat.success + s.luck) then
 			repeat
 				ans = math.random(1, 5)
 			until ans ~= mine
 		end
-		text = "[" .. s.cheatShown .. "] 정답은 " .. Shared.NUM[ans] .. "번인 것 같다"
+		msg = "[" .. s.cheatShown .. "] 정답은 " .. Shared.NUM[ans] .. "번인 것 같다"
 	end
-	remote:FireClient(player, "Hint", text)
+	s.luck = 0
+	remote:FireClient(player, "Hint", msg)
 end
 
 -------------------------------------------------------------------
 -- 메인 루프
 -------------------------------------------------------------------
 local function pickTarget()
-	local suspect
-	for p, s in pairs(sessions) do
-		if math.random() < s.suspicion / 150 then
-			suspect = desks[s.desk].pos
+	for _, s in pairs(sessions) do
+		if not s.away and math.random() < s.suspicion / 150 then
+			local p = desks[s.desk].pos
+			return Vector3.new(p.X + 7, 4.5, p.Z - 3)
 		end
 	end
-	if suspect then
-		return Vector3.new(suspect.X + 3.5, 4.5, suspect.Z - 3.5)
+	local xs = { -42, -28, -14, 0, 14, 28, 42 }
+	return Vector3.new(xs[math.random(1, #xs)], 4.5, math.random(ROOM_Z0 + 5, ROOM_Z1 - 8))
+end
+
+local function updateCars(dt)
+	for _, lane in ipairs(LANES) do
+		lane.next = lane.next - dt
+		if lane.next <= 0 then
+			spawnCar(lane)
+			lane.next = 1.5 + math.random() * 3
+		end
 	end
-	-- 책상 사이 통로
-	local xs = { -32, -19.5, -6.5, 6.5, 19.5, 32 }
-	return Vector3.new(xs[math.random(1, #xs)], 4.5, math.random(ROOM_Z0 + 4, ROOM_Z1 - 6))
+	for i = #cars, 1, -1 do
+		local car = cars[i]
+		car.z = car.z + car.lane.dir * car.speed * dt
+		local cf = CFrame.new(car.lane.x, 0, car.z) * CFrame.Angles(0, car.lane.dir == 1 and math.pi or 0, 0)
+		car.model:PivotTo(cf)
+		if math.abs(car.z) > ROAD_LEN / 2 + 10 then
+			car.model:Destroy()
+			table.remove(cars, i)
+		else
+			-- 치였는지 검사
+			for _, player in ipairs(Players:GetPlayers()) do
+				local _, hum, hrp = getParts(player)
+				if hum and hrp and hum.Health > 0 then
+					local lp = (cf + Vector3.new(0, 2, 0)):PointToObjectSpace(hrp.Position)
+					if math.abs(lp.X) < 3.8 and math.abs(lp.Z) < 7 and math.abs(lp.Y) < 5 then
+						local s = sessions[player]
+						if s then
+							s.deathReason = "car"
+						end
+						hrp.Anchored = false
+						hrp.AssemblyLinearVelocity = Vector3.new(0, 60, 0) + cf.LookVector * car.speed
+						hum.Health = 0
+						remote:FireAllClients("Log", player.DisplayName .. " 교통사고")
+						toast(player, "차에 치였습니다.")
+					end
+				end
+			end
+		end
+	end
 end
 
 RunService.Heartbeat:Connect(function(dt)
+	updateCars(dt)
 	if freeze > 0 then
 		return
 	end
+
 	-- 감독관 이동
 	if tState.wait > 0 then
 		tState.wait = tState.wait - dt
@@ -765,36 +1071,37 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	teacher:PivotTo(teacherCF())
 
-	-- 부정행위 감시
-	for i, d in ipairs(desks) do
-		if d.occupant and not d.dying then
-			local cheating = false
-			if d.occupant == "npc" then
-				cheating = (d.cheating or 0) > 0
-			elseif sessions[d.occupant] then
-				cheating = sessions[d.occupant].cheating
-			end
-			if cheating and teacherSees(d.pos) then
-				if d.occupant == "npc" then
-					d.cheating = 0
-					if d.model and d.model:FindFirstChild("Head") then
-						d.model.Head.Sweat.Enabled = false
-					end
-				else
-					local s = sessions[d.occupant]
-					s.cheating = false
-					remote:FireClient(d.occupant, "CheatCancel")
-				end
-				task.spawn(catchAt, i)
+	local now = os.clock()
+	for player, s in pairs(sessions) do
+		if not s.ended and not desks[s.desk].dying then
+			local _, _, hrp = getParts(player)
+			-- 부정행위 중 들킴
+			if s.cheating and teacherSees(desks[s.desk].pos) then
+				remote:FireClient(player, "CheatCancel")
+				task.spawn(catchAt, s.desk, player)
 				return
 			end
-		end
-	end
-
-	-- 플레이어 부정행위 완료
-	for player, s in pairs(sessions) do
-		if s.cheating and os.clock() >= s.cheatEnd then
-			finishCheat(player, s)
+			if s.away then
+				-- 몰래 돌아다니다 교실 안에서 들킴
+				if hrp and teacherSees(hrp.Position) then
+					task.spawn(catchAt, s.desk, player)
+					return
+				end
+				-- 빈자리를 들킴 → 의심도 상승
+				if now >= s.nextEmptyCheck and teacherSees(desks[s.desk].pos) then
+					s.nextEmptyCheck = now + 6
+					s.suspicion = math.min(100, s.suspicion + 25)
+					remote:FireClient(player, "Timer", s.timeLeft, s.suspicion)
+					toast(player, "감독관이 빈자리를 봤습니다. 의심도 +25")
+					if s.suspicion >= 100 then
+						task.spawn(catchAt, s.desk, player)
+						return
+					end
+				end
+			end
+			if s.cheating and now >= s.cheatEnd then
+				finishCheat(player, s)
+			end
 		end
 	end
 end)
@@ -809,7 +1116,7 @@ task.spawn(function()
 					s.timeLeft = s.timeLeft - 1
 					remote:FireClient(player, "Timer", s.timeLeft, s.suspicion)
 					if s.timeLeft <= 0 then
-						endSession(player, false)
+						endSession(player, nil)
 					end
 				end
 			end
@@ -924,7 +1231,8 @@ fit()
 -------------------------------------------------------------------
 local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })
 text({ Parent = top, Text = "한국 수능 부정행위", Font = F.bold, TextSize = 18, Size = UDim2.new(0, 260, 1, 0), Position = UDim2.fromOffset(18, 0) })
-local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -300, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
+local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -440, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
+local moneyLabel = text({ Parent = top, Text = "", Font = F.bold, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 130, 1, 0), Position = UDim2.new(1, -148, 0, 0) })
 
 -------------------------------------------------------------------
 -- 왼쪽: 부정행위 적기
@@ -960,7 +1268,7 @@ local input = new("TextBox", {
 local addBtn = button({ Parent = inputRow, Text = "추가", Size = UDim2.new(0, 58, 1, 0), Position = UDim2.new(1, -58, 0, 0) })
 
 local listTop = 116
-local actionH = 196
+local actionH = 240
 local list = new("ScrollingFrame", { Parent = left, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -(listTop + actionH + 10)), Position = UDim2.fromOffset(0, listTop), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, ScrollBarImageColor3 = C.line })
 new("UIListLayout", { Parent = list, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
 
@@ -970,10 +1278,11 @@ new("Frame", { Parent = action, BackgroundColor3 = C.line, BorderSizePixel = 0, 
 local curLabel = text({ Parent = action, Text = "선택: -", Font = F.mid, TextSize = 13, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 12), TextTruncate = Enum.TextTruncate.AtEnd })
 local startBtn = button({ Parent = action, Text = "시험 시작", TextSize = 16, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38) })
 local cheatBtn = button({ Parent = action, Text = "부정행위 시도", TextSize = 16, BackgroundColor3 = C.danger, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38), Visible = false })
-local progBg = new("Frame", { Parent = action, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, 90), Visible = false }, { corner(3) })
+local leaveBtn = button({ Parent = action, Text = "몰래 나가기", TextSize = 14, Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 88), Visible = false }, false)
+local progBg = new("Frame", { Parent = action, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, 132), Visible = false }, { corner(3) })
 local progFill = new("Frame", { Parent = progBg, BackgroundColor3 = C.danger, Size = UDim2.new(0, 0, 1, 0) }, { corner(3) })
-local hintLabel = text({ Parent = action, Text = "", Font = F.mid, TextSize = 13, Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 100), TextYAlignment = Enum.TextYAlignment.Top })
-local logLabel = text({ Parent = action, Text = "", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
+local hintLabel = text({ Parent = action, Text = "", Font = F.mid, TextSize = 13, Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
+local logLabel = text({ Parent = action, Text = "", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 188), TextYAlignment = Enum.TextYAlignment.Top })
 
 -------------------------------------------------------------------
 -- 오른쪽 아래: 시험지
@@ -1023,6 +1332,57 @@ local domain = new("Frame", { Parent = root, BackgroundTransparency = 1, Size = 
 local domainImg = new("ImageLabel", { Parent = domain, ZIndex = 51, Image = Shared.DOMAIN_IMAGE, BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.4, 0.45), Position = UDim2.fromScale(0.5, 0.42) })
 local domainText = text({ Parent = domain, ZIndex = 52, Text = Shared.DOMAIN_LINE, Font = F.bold, TextSize = 48, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = Color3.fromRGB(20, 40, 90), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 60), Position = UDim2.fromScale(0.5, 0.7) })
 local domainWho = text({ Parent = domain, ZIndex = 52, Text = "", Font = F.bold, TextSize = 20, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 28), Position = UDim2.fromScale(0.5, 0.8) })
+
+-------------------------------------------------------------------
+-- 가방 (오른쪽 위)
+-------------------------------------------------------------------
+local bag = card({ Parent = root, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(260, 180), Position = UDim2.new(1, -16, 0, 72) })
+pad(14, 12).Parent = bag
+text({ Parent = bag, Text = "가방", Font = F.bold, TextSize = 15, Size = UDim2.new(1, 0, 0, 20) })
+local bagEmpty = text({ Parent = bag, Text = "비어 있음. 교실 밖 도로 건너 매점에서 살 수 있어요.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 26) })
+local bagList = new("ScrollingFrame", { Parent = bag, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 26), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, ScrollBarImageColor3 = C.line })
+new("UIListLayout", { Parent = bagList, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder })
+
+-------------------------------------------------------------------
+-- 매점 창
+-------------------------------------------------------------------
+local shop = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 30, Visible = false })
+local shopBox = card({ Parent = shop, ZIndex = 31, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(460, 420) })
+pad(20).Parent = shopBox
+text({ Parent = shopBox, ZIndex = 32, Text = "매점", Font = F.bold, TextSize = 20, Size = UDim2.new(1, 0, 0, 26) })
+local shopMoney = text({ Parent = shopBox, ZIndex = 32, Text = "", Font = F.mid, TextSize = 14, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -40, 0, 26) })
+local shopClose = button({ Parent = shopBox, ZIndex = 32, Text = "X", TextSize = 14, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(28, 26), Position = UDim2.fromScale(1, 0) }, false)
+for i, it in ipairs(Shared.SHOP) do
+	local row = new("Frame", { Parent = shopBox, ZIndex = 32, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.fromOffset(0, 38 + (i - 1) * 58) }, { corner(8) })
+	text({ Parent = row, ZIndex = 33, Text = it.name, Font = F.bold, TextSize = 15, Size = UDim2.new(1, -200, 0, 20), Position = UDim2.fromOffset(12, 7) })
+	text({ Parent = row, ZIndex = 33, Text = it.desc, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, -200, 0, 16), Position = UDim2.fromOffset(12, 28) })
+	text({ Parent = row, ZIndex = 33, Text = it.price .. "원", Font = F.mid, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.fromOffset(80, 52), Position = UDim2.new(1, -172, 0, 0) })
+	local buy = button({ Parent = row, ZIndex = 33, Text = "구매", TextSize = 14, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(72, 34), Position = UDim2.new(1, -10, 0.5, 0) })
+	buy.MouseButton1Click:Connect(function()
+		remote:FireServer("Buy", it.id)
+	end)
+end
+shopClose.MouseButton1Click:Connect(function()
+	shop.Visible = false
+end)
+
+-------------------------------------------------------------------
+-- 알림
+-------------------------------------------------------------------
+local toastLabel = text({ Parent = root, ZIndex = 60, Text = "", Font = F.mid, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.15, BackgroundColor3 = Color3.fromRGB(31, 35, 40), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(420, 40), Position = UDim2.new(0.5, 0, 0, 72), Visible = false })
+corner(8).Parent = toastLabel
+local toastId = 0
+local function toast(msg)
+	toastId = toastId + 1
+	local my = toastId
+	toastLabel.Text = msg
+	toastLabel.Visible = true
+	task.delay(2.5, function()
+		if toastId == my then
+			toastLabel.Visible = false
+		end
+	end)
+end
 
 -------------------------------------------------------------------
 -- 결과창
@@ -1335,6 +1695,8 @@ local function setExamMode(on)
 	inExam = on
 	startBtn.Visible = not on
 	cheatBtn.Visible = on
+	leaveBtn.Visible = on
+	leaveBtn.Text = "몰래 나가기"
 	paper.Visible = on
 	progBg.Visible = false
 	hintLabel.Text = ""
@@ -1346,6 +1708,45 @@ startBtn.MouseButton1Click:Connect(function()
 	if c then
 		remote:FireServer("Start", c.name)
 	end
+end)
+
+local away = false
+leaveBtn.MouseButton1Click:Connect(function()
+	remote:FireServer(away and "Return" or "Leave")
+end)
+
+local function renderBag(inv)
+	for _, ch in ipairs(bagList:GetChildren()) do
+		if ch:IsA("GuiObject") then
+			ch:Destroy()
+		end
+	end
+	local any = false
+	for i, it in ipairs(Shared.SHOP) do
+		local n = inv[it.id]
+		if n and n > 0 then
+			any = true
+			local row = new("Frame", { Parent = bagList, LayoutOrder = i, BackgroundColor3 = C.sub, Size = UDim2.new(1, -4, 0, 32) }, { corner(6) })
+			text({ Parent = row, Text = it.name .. "  x" .. n, Font = F.mid, TextSize = 13, Size = UDim2.new(1, -70, 1, 0), Position = UDim2.fromOffset(10, 0) })
+			local eat = button({ Parent = row, Text = "먹기", TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(52, 24), Position = UDim2.new(1, -4, 0.5, 0) })
+			eat.MouseButton1Click:Connect(function()
+				remote:FireServer("Eat", it.id)
+			end)
+		end
+	end
+	bagEmpty.Visible = not any
+end
+renderBag({})
+
+local function showMoney(v)
+	moneyLabel.Text = v .. "원"
+	shopMoney.Text = "가진 돈 " .. v .. "원"
+end
+task.spawn(function()
+	local ls = player:WaitForChild("leaderstats")
+	local m = ls:WaitForChild("돈")
+	showMoney(m.Value)
+	m.Changed:Connect(showMoney)
 end)
 
 cheatBtn.MouseButton1Click:Connect(function()
@@ -1455,11 +1856,34 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 			table.remove(logs)
 		end
 		logLabel.Text = table.concat(logs, "\n")
+	elseif action == "Away" then
+		away = data
+		leaveBtn.Text = away and "자리로 돌아가기" or "몰래 나가기"
+		paper.Visible = not away
+		cheatBtn.Visible = not away
+		if away then
+			toast("감독관 시야(빨간 빛)를 피해 문으로 나가세요. 돌아오면 자리 근처에서 버튼을 누르세요.")
+		end
+	elseif action == "Toast" then
+		toast(data)
+	elseif action == "Inventory" then
+		renderBag(data)
+	elseif action == "Money" then
+		showMoney(data)
+	elseif action == "OpenShop" then
+		showMoney(data)
+		shop.Visible = true
 	elseif action == "End" then
 		cheatingUntil = nil
+		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.caught then
+		if data.reason == "car" then
+			mTitle.Text = "교통사고"
+			mGrade.Text = "실격"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("시험 중 몰래 나갔다가 차에 치였습니다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "caught" then
 			mTitle.Text = "부정행위 적발"
 			mGrade.Text = "실격"
 			mGrade.TextColor3 = C.danger

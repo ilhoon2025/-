@@ -104,7 +104,8 @@ fit()
 -------------------------------------------------------------------
 local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })
 text({ Parent = top, Text = "한국 수능 부정행위", Font = F.bold, TextSize = 18, Size = UDim2.new(0, 260, 1, 0), Position = UDim2.fromOffset(18, 0) })
-local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -300, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
+local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -440, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
+local moneyLabel = text({ Parent = top, Text = "", Font = F.bold, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 130, 1, 0), Position = UDim2.new(1, -148, 0, 0) })
 
 -------------------------------------------------------------------
 -- 왼쪽: 부정행위 적기
@@ -140,7 +141,7 @@ local input = new("TextBox", {
 local addBtn = button({ Parent = inputRow, Text = "추가", Size = UDim2.new(0, 58, 1, 0), Position = UDim2.new(1, -58, 0, 0) })
 
 local listTop = 116
-local actionH = 196
+local actionH = 240
 local list = new("ScrollingFrame", { Parent = left, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -(listTop + actionH + 10)), Position = UDim2.fromOffset(0, listTop), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, ScrollBarImageColor3 = C.line })
 new("UIListLayout", { Parent = list, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
 
@@ -150,10 +151,11 @@ new("Frame", { Parent = action, BackgroundColor3 = C.line, BorderSizePixel = 0, 
 local curLabel = text({ Parent = action, Text = "선택: -", Font = F.mid, TextSize = 13, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 12), TextTruncate = Enum.TextTruncate.AtEnd })
 local startBtn = button({ Parent = action, Text = "시험 시작", TextSize = 16, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38) })
 local cheatBtn = button({ Parent = action, Text = "부정행위 시도", TextSize = 16, BackgroundColor3 = C.danger, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38), Visible = false })
-local progBg = new("Frame", { Parent = action, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, 90), Visible = false }, { corner(3) })
+local leaveBtn = button({ Parent = action, Text = "몰래 나가기", TextSize = 14, Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 88), Visible = false }, false)
+local progBg = new("Frame", { Parent = action, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, 132), Visible = false }, { corner(3) })
 local progFill = new("Frame", { Parent = progBg, BackgroundColor3 = C.danger, Size = UDim2.new(0, 0, 1, 0) }, { corner(3) })
-local hintLabel = text({ Parent = action, Text = "", Font = F.mid, TextSize = 13, Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 100), TextYAlignment = Enum.TextYAlignment.Top })
-local logLabel = text({ Parent = action, Text = "", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
+local hintLabel = text({ Parent = action, Text = "", Font = F.mid, TextSize = 13, Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
+local logLabel = text({ Parent = action, Text = "", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 188), TextYAlignment = Enum.TextYAlignment.Top })
 
 -------------------------------------------------------------------
 -- 오른쪽 아래: 시험지
@@ -203,6 +205,57 @@ local domain = new("Frame", { Parent = root, BackgroundTransparency = 1, Size = 
 local domainImg = new("ImageLabel", { Parent = domain, ZIndex = 51, Image = Shared.DOMAIN_IMAGE, BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.4, 0.45), Position = UDim2.fromScale(0.5, 0.42) })
 local domainText = text({ Parent = domain, ZIndex = 52, Text = Shared.DOMAIN_LINE, Font = F.bold, TextSize = 48, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = Color3.fromRGB(20, 40, 90), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 60), Position = UDim2.fromScale(0.5, 0.7) })
 local domainWho = text({ Parent = domain, ZIndex = 52, Text = "", Font = F.bold, TextSize = 20, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 28), Position = UDim2.fromScale(0.5, 0.8) })
+
+-------------------------------------------------------------------
+-- 가방 (오른쪽 위)
+-------------------------------------------------------------------
+local bag = card({ Parent = root, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(260, 180), Position = UDim2.new(1, -16, 0, 72) })
+pad(14, 12).Parent = bag
+text({ Parent = bag, Text = "가방", Font = F.bold, TextSize = 15, Size = UDim2.new(1, 0, 0, 20) })
+local bagEmpty = text({ Parent = bag, Text = "비어 있음. 교실 밖 도로 건너 매점에서 살 수 있어요.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 26) })
+local bagList = new("ScrollingFrame", { Parent = bag, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 26), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, ScrollBarImageColor3 = C.line })
+new("UIListLayout", { Parent = bagList, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder })
+
+-------------------------------------------------------------------
+-- 매점 창
+-------------------------------------------------------------------
+local shop = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 30, Visible = false })
+local shopBox = card({ Parent = shop, ZIndex = 31, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(460, 420) })
+pad(20).Parent = shopBox
+text({ Parent = shopBox, ZIndex = 32, Text = "매점", Font = F.bold, TextSize = 20, Size = UDim2.new(1, 0, 0, 26) })
+local shopMoney = text({ Parent = shopBox, ZIndex = 32, Text = "", Font = F.mid, TextSize = 14, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -40, 0, 26) })
+local shopClose = button({ Parent = shopBox, ZIndex = 32, Text = "X", TextSize = 14, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(28, 26), Position = UDim2.fromScale(1, 0) }, false)
+for i, it in ipairs(Shared.SHOP) do
+	local row = new("Frame", { Parent = shopBox, ZIndex = 32, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.fromOffset(0, 38 + (i - 1) * 58) }, { corner(8) })
+	text({ Parent = row, ZIndex = 33, Text = it.name, Font = F.bold, TextSize = 15, Size = UDim2.new(1, -200, 0, 20), Position = UDim2.fromOffset(12, 7) })
+	text({ Parent = row, ZIndex = 33, Text = it.desc, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, -200, 0, 16), Position = UDim2.fromOffset(12, 28) })
+	text({ Parent = row, ZIndex = 33, Text = it.price .. "원", Font = F.mid, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.fromOffset(80, 52), Position = UDim2.new(1, -172, 0, 0) })
+	local buy = button({ Parent = row, ZIndex = 33, Text = "구매", TextSize = 14, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(72, 34), Position = UDim2.new(1, -10, 0.5, 0) })
+	buy.MouseButton1Click:Connect(function()
+		remote:FireServer("Buy", it.id)
+	end)
+end
+shopClose.MouseButton1Click:Connect(function()
+	shop.Visible = false
+end)
+
+-------------------------------------------------------------------
+-- 알림
+-------------------------------------------------------------------
+local toastLabel = text({ Parent = root, ZIndex = 60, Text = "", Font = F.mid, TextSize = 15, TextColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.15, BackgroundColor3 = Color3.fromRGB(31, 35, 40), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(420, 40), Position = UDim2.new(0.5, 0, 0, 72), Visible = false })
+corner(8).Parent = toastLabel
+local toastId = 0
+local function toast(msg)
+	toastId = toastId + 1
+	local my = toastId
+	toastLabel.Text = msg
+	toastLabel.Visible = true
+	task.delay(2.5, function()
+		if toastId == my then
+			toastLabel.Visible = false
+		end
+	end)
+end
 
 -------------------------------------------------------------------
 -- 결과창
@@ -515,6 +568,8 @@ local function setExamMode(on)
 	inExam = on
 	startBtn.Visible = not on
 	cheatBtn.Visible = on
+	leaveBtn.Visible = on
+	leaveBtn.Text = "몰래 나가기"
 	paper.Visible = on
 	progBg.Visible = false
 	hintLabel.Text = ""
@@ -526,6 +581,45 @@ startBtn.MouseButton1Click:Connect(function()
 	if c then
 		remote:FireServer("Start", c.name)
 	end
+end)
+
+local away = false
+leaveBtn.MouseButton1Click:Connect(function()
+	remote:FireServer(away and "Return" or "Leave")
+end)
+
+local function renderBag(inv)
+	for _, ch in ipairs(bagList:GetChildren()) do
+		if ch:IsA("GuiObject") then
+			ch:Destroy()
+		end
+	end
+	local any = false
+	for i, it in ipairs(Shared.SHOP) do
+		local n = inv[it.id]
+		if n and n > 0 then
+			any = true
+			local row = new("Frame", { Parent = bagList, LayoutOrder = i, BackgroundColor3 = C.sub, Size = UDim2.new(1, -4, 0, 32) }, { corner(6) })
+			text({ Parent = row, Text = it.name .. "  x" .. n, Font = F.mid, TextSize = 13, Size = UDim2.new(1, -70, 1, 0), Position = UDim2.fromOffset(10, 0) })
+			local eat = button({ Parent = row, Text = "먹기", TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(52, 24), Position = UDim2.new(1, -4, 0.5, 0) })
+			eat.MouseButton1Click:Connect(function()
+				remote:FireServer("Eat", it.id)
+			end)
+		end
+	end
+	bagEmpty.Visible = not any
+end
+renderBag({})
+
+local function showMoney(v)
+	moneyLabel.Text = v .. "원"
+	shopMoney.Text = "가진 돈 " .. v .. "원"
+end
+task.spawn(function()
+	local ls = player:WaitForChild("leaderstats")
+	local m = ls:WaitForChild("돈")
+	showMoney(m.Value)
+	m.Changed:Connect(showMoney)
 end)
 
 cheatBtn.MouseButton1Click:Connect(function()
@@ -635,11 +729,34 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 			table.remove(logs)
 		end
 		logLabel.Text = table.concat(logs, "\n")
+	elseif action == "Away" then
+		away = data
+		leaveBtn.Text = away and "자리로 돌아가기" or "몰래 나가기"
+		paper.Visible = not away
+		cheatBtn.Visible = not away
+		if away then
+			toast("감독관 시야(빨간 빛)를 피해 문으로 나가세요. 돌아오면 자리 근처에서 버튼을 누르세요.")
+		end
+	elseif action == "Toast" then
+		toast(data)
+	elseif action == "Inventory" then
+		renderBag(data)
+	elseif action == "Money" then
+		showMoney(data)
+	elseif action == "OpenShop" then
+		showMoney(data)
+		shop.Visible = true
 	elseif action == "End" then
 		cheatingUntil = nil
+		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.caught then
+		if data.reason == "car" then
+			mTitle.Text = "교통사고"
+			mGrade.Text = "실격"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("시험 중 몰래 나갔다가 차에 치였습니다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "caught" then
 			mTitle.Text = "부정행위 적발"
 			mGrade.Text = "실격"
 			mGrade.TextColor3 = C.danger
