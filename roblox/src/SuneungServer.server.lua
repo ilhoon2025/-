@@ -33,7 +33,7 @@ local function part(props)
 	return p
 end
 
-local ROOM_X, ROOM_Z0, ROOM_Z1 = 26, -22, 24
+local ROOM_X, ROOM_Z0, ROOM_Z1 = 40, -26, 46
 
 part({ Name = "Floor", Size = Vector3.new(ROOM_X * 2, 1, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(0, -0.5, (ROOM_Z0 + ROOM_Z1) / 2), Color = Color3.fromRGB(176, 138, 98), Material = Enum.Material.WoodPlanks })
 part({ Name = "Ceiling", Size = Vector3.new(ROOM_X * 2, 1, ROOM_Z1 - ROOM_Z0), Position = Vector3.new(0, 16.5, (ROOM_Z0 + ROOM_Z1) / 2), Color = Color3.fromRGB(235, 235, 230) })
@@ -44,8 +44,8 @@ part({ Name = "WallF", Size = Vector3.new(ROOM_X * 2, 16, 1), Position = Vector3
 part({ Name = "WallB", Size = Vector3.new(ROOM_X * 2, 16, 1), Position = Vector3.new(0, 8, ROOM_Z1), Color = wallColor })
 
 -- 천장 조명
-for _, x in ipairs({ -12, 12 }) do
-	for _, z in ipairs({ -8, 10 }) do
+for _, x in ipairs({ -24, 0, 24 }) do
+	for _, z in ipairs({ -12, 8, 28 }) do
 		local lamp = part({ Name = "Lamp", Size = Vector3.new(8, 0.3, 2), Position = Vector3.new(x, 15.9, z), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
 		local light = Instance.new("PointLight")
 		light.Range = 24
@@ -55,7 +55,7 @@ for _, x in ipairs({ -12, 12 }) do
 end
 
 -- 칠판
-local board = part({ Name = "Blackboard", Size = Vector3.new(30, 7, 0.4), Position = Vector3.new(0, 8, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
+local board = part({ Name = "Blackboard", Size = Vector3.new(44, 8, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
 do
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Back
@@ -94,8 +94,8 @@ local SHIRTS = { Color3.fromRGB(76, 110, 245), Color3.fromRGB(232, 89, 12), Colo
 local SKIN = Color3.fromRGB(243, 210, 179)
 
 local desks = {} -- { pos = Vector3(학생 자리), occupant = "npc"|Player|nil, model = Model, seed = number }
-local COLS_X = { -15, -5, 5, 15 }
-local ROWS_Z = { -6, 3, 12 }
+local COLS_X = { -26, -13, 0, 13, 26 }
+local ROWS_Z = { -8, 4, 16, 28 }
 
 local function makeBillboard(adornee, text, offsetY, color)
 	local bb = Instance.new("BillboardGui")
@@ -152,7 +152,7 @@ local function buildNPC(i)
 		part({ Parent = m, Name = "Eye", Size = Vector3.new(0.18, 0.25, 0.1), Position = Vector3.new(x + dx, 5.8, z - 0.38), Color = Color3.new(0.1, 0.1, 0.1) })
 	end
 	makeBillboard(head, i .. "번", 2.2, Color3.fromRGB(200, 205, 225))
-	local sweat = makeBillboard(head, "💦 부정행위 중", 3.4, Color3.fromRGB(255, 200, 87))
+	local sweat = makeBillboard(head, "부정행위 중", 3.4, Color3.fromRGB(255, 200, 87))
 	sweat.Name = "Sweat"
 	sweat.Enabled = false
 	m.PrimaryPart = torso
@@ -174,7 +174,7 @@ end
 -------------------------------------------------------------------
 -- 감독관
 -------------------------------------------------------------------
-local VIEW_RANGE = 30
+local VIEW_RANGE = 34
 local VIEW_ANGLE = math.rad(32)
 
 local teacher = Instance.new("Model")
@@ -352,7 +352,7 @@ local function catchAt(deskIndex)
 	teacher:PivotTo(teacherCF())
 	speech.Label.Text = Shared.DOMAIN_LINE
 	speech.Enabled = true
-	logAll("🚨 " .. name .. " 적발!")
+	logAll(name .. " 적발")
 	remote:FireAllClients("Domain", name)
 
 	task.wait(2)
@@ -469,7 +469,13 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			return
 		end
 		-- 자리 고르기: 가운데 자리부터 빈자리에 앉음
-		local order = { 6, 7, 2, 3, 10, 11, 5, 8, 1, 4, 9, 12 }
+		local order = {}
+		for i = 1, #desks do
+			order[i] = i
+		end
+		table.sort(order, function(a, b)
+			return desks[a].pos.Magnitude < desks[b].pos.Magnitude
+		end)
 		local seat
 		for _, i in ipairs(order) do
 			local d = desks[i]
@@ -500,7 +506,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		for k = 1, Shared.TOTAL_Q do
 			qs[k] = idx[k]
 		end
-		local cheatName = string.sub(arg, 1, 60)
+		local cheatName = Shared.clip(arg, 20)
 		sessions[player] = {
 			seed = math.random(1, 999999),
 			questions = qs,
@@ -514,7 +520,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			desk = seat,
 		}
 		seatPlayer(player, seat)
-		logAll("📝 " .. player.DisplayName .. " 시험 시작 (" .. seat .. "번 자리)")
+		logAll(player.DisplayName .. " 입실 (" .. seat .. "번 자리)")
 		sendQuestion(player, sessions[player])
 	elseif action == "Answer" then
 		local s = sessions[player]
@@ -537,7 +543,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			return
 		end
 		if type(arg) == "string" and arg ~= s.cheat.name then
-			local n = string.sub(arg, 1, 60)
+			local n = Shared.clip(arg, 20)
 			s.cheat = Shared.makeCheat(n)
 			s.cheatShown = filterFor(player, n)
 		end
@@ -547,7 +553,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		local char = player.Character
 		local head = char and char:FindFirstChild("Head")
 		if head and not head:FindFirstChild("Sweat") then
-			local bb = makeBillboard(head, "💦", 2.5, Color3.fromRGB(255, 200, 87))
+			local bb = makeBillboard(head, "!", 2.5, Color3.fromRGB(255, 200, 87))
 			bb.Name = "Sweat"
 		end
 	end
@@ -581,7 +587,7 @@ local function finishCheat(player, s)
 		local n = nearestNeighbor(s.desk)
 		if n then
 			local _, theirs = Shared.paperFor(seedOf(n), qIndex)
-			text = "👀 " .. n .. "번 자리 답: " .. Shared.NUM[theirs] .. "번 (근데 시험지가 다른데…?)"
+			text = n .. "번 자리 답안: " .. Shared.NUM[theirs] .. "번  (시험지 유형이 다를 수 있음)"
 		else
 			text = "주변에 살아있는 친구가 없다…"
 		end
@@ -592,7 +598,7 @@ local function finishCheat(player, s)
 				ans = math.random(1, 5)
 			until ans ~= mine
 		end
-		text = "✨ " .. s.cheatShown .. "이(가) 알려줌: 정답은 " .. Shared.NUM[ans] .. "번인 것 같다!"
+		text = "[" .. s.cheatShown .. "] 정답은 " .. Shared.NUM[ans] .. "번인 것 같다"
 	end
 	remote:FireClient(player, "Hint", text)
 end
@@ -611,7 +617,7 @@ local function pickTarget()
 		return Vector3.new(suspect.X + 3.5, 4.5, suspect.Z - 3.5)
 	end
 	-- 책상 사이 통로
-	local xs = { -20, -10, 0, 10, 20 }
+	local xs = { -32, -19.5, -6.5, 6.5, 19.5, 32 }
 	return Vector3.new(xs[math.random(1, #xs)], 4.5, math.random(ROOM_Z0 + 4, ROOM_Z1 - 6))
 end
 

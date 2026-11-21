@@ -7,21 +7,26 @@ local RunService = game:GetService("RunService")
 local Shared = require(ReplicatedStorage:WaitForChild("SuneungShared"))
 local remote = ReplicatedStorage:WaitForChild("SuneungEvent")
 local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 -------------------------------------------------------------------
--- UI 도우미
+-- 스타일
 -------------------------------------------------------------------
 local C = {
-	bg = Color3.fromRGB(27, 29, 36),
-	panel = Color3.fromRGB(38, 41, 52),
-	panel2 = Color3.fromRGB(48, 52, 74),
-	line = Color3.fromRGB(61, 66, 88),
-	text = Color3.fromRGB(241, 241, 246),
-	muted = Color3.fromRGB(154, 159, 184),
-	accent = Color3.fromRGB(255, 77, 109),
-	good = Color3.fromRGB(61, 220, 151),
-	warn = Color3.fromRGB(255, 200, 87),
-	paper = Color3.fromRGB(251, 247, 234),
+	surface = Color3.fromRGB(255, 255, 255),
+	sub = Color3.fromRGB(246, 247, 249),
+	line = Color3.fromRGB(226, 229, 234),
+	text = Color3.fromRGB(31, 35, 40),
+	muted = Color3.fromRGB(107, 114, 128),
+	accent = Color3.fromRGB(30, 58, 138),
+	danger = Color3.fromRGB(185, 28, 28),
+	ok = Color3.fromRGB(21, 128, 61),
+	paper = Color3.fromRGB(252, 251, 247),
+}
+local F = {
+	reg = Enum.Font.Gotham,
+	mid = Enum.Font.GothamMedium,
+	bold = Enum.Font.GothamBold,
 }
 
 local function new(class, props, children)
@@ -38,104 +43,168 @@ local function new(class, props, children)
 	return o
 end
 local function corner(r)
-	return new("UICorner", { CornerRadius = UDim.new(0, r or 10) })
+	return new("UICorner", { CornerRadius = UDim.new(0, r or 8) })
 end
 local function stroke(color, t)
-	return new("UIStroke", { Color = color or C.line, Thickness = t or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
+	return new("UIStroke", { Color = color or C.line, Thickness = t or 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
 end
-local function pad(n)
-	return new("UIPadding", { PaddingTop = UDim.new(0, n), PaddingBottom = UDim.new(0, n), PaddingLeft = UDim.new(0, n), PaddingRight = UDim.new(0, n) })
+local function pad(x, y)
+	y = y or x
+	return new("UIPadding", { PaddingTop = UDim.new(0, y), PaddingBottom = UDim.new(0, y), PaddingLeft = UDim.new(0, x), PaddingRight = UDim.new(0, x) })
 end
-local function label(props)
+local function text(props)
 	props.BackgroundTransparency = props.BackgroundTransparency or 1
-	props.Font = props.Font or Enum.Font.GothamBold
+	props.Font = props.Font or F.reg
+	props.TextSize = props.TextSize or 14
 	props.TextColor3 = props.TextColor3 or C.text
 	props.TextXAlignment = props.TextXAlignment or Enum.TextXAlignment.Left
+	props.TextYAlignment = props.TextYAlignment or Enum.TextYAlignment.Center
 	props.TextWrapped = true
 	return new("TextLabel", props)
 end
-local function button(props)
-	props.Font = props.Font or Enum.Font.GothamBold
-	props.TextColor3 = props.TextColor3 or Color3.new(1, 1, 1)
-	props.BackgroundColor3 = props.BackgroundColor3 or C.accent
+local function button(props, primary)
+	props.Font = props.Font or F.bold
+	props.TextSize = props.TextSize or 15
 	props.AutoButtonColor = true
-	local b = new("TextButton", props, { corner(10) })
-	return b
+	if primary == false then
+		props.BackgroundColor3 = props.BackgroundColor3 or C.surface
+		props.TextColor3 = props.TextColor3 or C.text
+		return new("TextButton", props, { corner(8), stroke() })
+	end
+	props.BackgroundColor3 = props.BackgroundColor3 or C.accent
+	props.TextColor3 = props.TextColor3 or Color3.new(1, 1, 1)
+	return new("TextButton", props, { corner(8) })
+end
+local function card(props)
+	props.BackgroundColor3 = props.BackgroundColor3 or C.surface
+	return new("Frame", props, { corner(12), stroke() })
 end
 
+-------------------------------------------------------------------
+-- 화면 크기에 맞춰 UI 크기 자동 조절
+-- 기준 해상도 1280x720 → 화면이 작으면 줄이고 크면 키움
+-------------------------------------------------------------------
 local gui = new("ScreenGui", { Name = "SuneungUI", ResetOnSpawn = false, IgnoreGuiInset = true, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = player:WaitForChild("PlayerGui") })
+local root = new("Frame", { Parent = gui, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) })
+local uiScale = new("UIScale", { Parent = root })
 
--- 제목
-label({ Parent = gui, Text = "한국 수능 부정행위!", Font = Enum.Font.GothamBlack, TextSize = 34, TextColor3 = C.accent, TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 8) })
+local function fit()
+	local v = camera.ViewportSize
+	local s = math.clamp(math.min(v.X / 1280, v.Y / 720), 0.5, 1.6)
+	uiScale.Scale = s
+	root.Size = UDim2.fromOffset(v.X / s, v.Y / s)
+end
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+fit()
 
 -------------------------------------------------------------------
--- 왼쪽: 부정행위 적기!
+-- 상단 바
 -------------------------------------------------------------------
-local left = new("Frame", { Parent = gui, BackgroundColor3 = C.panel, Size = UDim2.new(0, 300, 1, -80), Position = UDim2.fromOffset(12, 64) }, { corner(14), stroke(), pad(14) })
-new("UIListLayout", { Parent = left, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder })
+local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })
+text({ Parent = top, Text = "한국 수능 부정행위", Font = F.bold, TextSize = 18, Size = UDim2.new(0, 260, 1, 0), Position = UDim2.fromOffset(18, 0) })
+local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -300, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
 
-label({ Parent = left, LayoutOrder = 1, Text = "✏️ 부정행위 적기!", Font = Enum.Font.GothamBlack, TextSize = 24, TextColor3 = C.warn, Size = UDim2.new(1, 0, 0, 30) })
-local row = new("Frame", { Parent = left, LayoutOrder = 2, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40) })
-local input = new("TextBox", { Parent = row, Size = UDim2.new(1, -72, 1, 0), BackgroundColor3 = C.bg, TextColor3 = C.text, PlaceholderText = "예) 스마트워치, 비둘기…", PlaceholderColor3 = C.muted, Text = "", Font = Enum.Font.Gotham, TextSize = 16, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left }, { corner(10), stroke(), pad(8) })
-local addBtn = button({ Parent = row, Text = "추가", TextSize = 16, BackgroundColor3 = C.warn, TextColor3 = Color3.fromRGB(34, 34, 17), Size = UDim2.new(0, 64, 1, 0), Position = UDim2.new(1, -64, 0, 0) })
-label({ Parent = left, LayoutOrder = 3, Text = "아무거나 적으면 그걸로 부정행위를 해요. 적은 것마다 성공률·위험도가 달라요!", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 30) })
+-------------------------------------------------------------------
+-- 왼쪽: 부정행위 적기
+-------------------------------------------------------------------
+local left = card({ Parent = root, Size = UDim2.new(0, 300, 1, -88), Position = UDim2.fromOffset(16, 72) })
+pad(16).Parent = left
 
-local list = new("ScrollingFrame", { Parent = left, LayoutOrder = 4, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0.42, 0), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 4, BorderSizePixel = 0 })
+text({ Parent = left, Text = "부정행위 적기", Font = F.bold, TextSize = 17, Size = UDim2.new(1, 0, 0, 22) })
+text({ Parent = left, Text = "세상에 있는 아무거나 적어 보세요. 적은 것마다 성공률과 적발 확률이 달라요.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 32), Position = UDim2.fromOffset(0, 26) })
+
+local inputRow = new("Frame", { Parent = left, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 38), Position = UDim2.fromOffset(0, 66) })
+local input = new("TextBox", {
+	Parent = inputRow,
+	Size = UDim2.new(1, -66, 1, 0),
+	BackgroundColor3 = C.sub,
+	Text = "",
+	PlaceholderText = "예) 스마트워치, 지우개",
+	PlaceholderColor3 = C.muted,
+	TextColor3 = C.text,
+	Font = F.reg,
+	TextSize = 15,
+	ClearTextOnFocus = false,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+}, { corner(8), stroke(), pad(10, 0) })
+local addBtn = button({ Parent = inputRow, Text = "추가", Size = UDim2.new(0, 58, 1, 0), Position = UDim2.new(1, -58, 0, 0) })
+
+local listTop = 116
+local actionH = 196
+local list = new("ScrollingFrame", { Parent = left, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -(listTop + actionH + 10)), Position = UDim2.fromOffset(0, listTop), CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, ScrollBarImageColor3 = C.line })
 new("UIListLayout", { Parent = list, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
 
-local startBtn = button({ Parent = left, LayoutOrder = 5, Text = "📝 시험 시작", TextSize = 20, Size = UDim2.new(1, 0, 0, 48) })
-
-local cheatBox = new("Frame", { Parent = left, LayoutOrder = 6, BackgroundColor3 = C.panel2, Size = UDim2.new(1, 0, 0, 200), Visible = false }, { corner(10), pad(10) })
-local curLabel = label({ Parent = cheatBox, Text = "사용 중: -", TextSize = 15, TextColor3 = C.warn, Size = UDim2.new(1, 0, 0, 22) })
-local cheatBtn = button({ Parent = cheatBox, Text = "🤫 부정행위 하기!", TextSize = 20, Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 28) })
-local progBg = new("Frame", { Parent = cheatBox, BackgroundColor3 = C.bg, Size = UDim2.new(1, 0, 0, 10), Position = UDim2.fromOffset(0, 82), Visible = false }, { corner(5) })
-local progFill = new("Frame", { Parent = progBg, BackgroundColor3 = C.warn, Size = UDim2.new(0, 0, 1, 0) }, { corner(5) })
-local hintLabel = label({ Parent = cheatBox, Text = "", TextSize = 14, TextColor3 = C.good, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 98) })
-local logLabel = label({ Parent = cheatBox, Text = "", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
+-- 아래쪽 동작 영역
+local action = new("Frame", { Parent = left, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, actionH), Position = UDim2.new(0, 0, 1, -actionH) })
+new("Frame", { Parent = action, BackgroundColor3 = C.line, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1) })
+local curLabel = text({ Parent = action, Text = "선택: -", Font = F.mid, TextSize = 13, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 12), TextTruncate = Enum.TextTruncate.AtEnd })
+local startBtn = button({ Parent = action, Text = "시험 시작", TextSize = 16, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38) })
+local cheatBtn = button({ Parent = action, Text = "부정행위 시도", TextSize = 16, BackgroundColor3 = C.danger, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 38), Visible = false })
+local progBg = new("Frame", { Parent = action, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, 90), Visible = false }, { corner(3) })
+local progFill = new("Frame", { Parent = progBg, BackgroundColor3 = C.danger, Size = UDim2.new(0, 0, 1, 0) }, { corner(3) })
+local hintLabel = text({ Parent = action, Text = "", Font = F.mid, TextSize = 13, Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromOffset(0, 100), TextYAlignment = Enum.TextYAlignment.Top })
+local logLabel = text({ Parent = action, Text = "", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 144), TextYAlignment = Enum.TextYAlignment.Top })
 
 -------------------------------------------------------------------
 -- 오른쪽 아래: 시험지
 -------------------------------------------------------------------
-local paper = new("Frame", { Parent = gui, BackgroundColor3 = C.paper, Size = UDim2.new(0, 440, 0, 380), Position = UDim2.new(1, -452, 1, -392), Visible = false }, { corner(6), pad(16) })
-local hud = label({ Parent = paper, Text = "", TextSize = 13, TextColor3 = Color3.fromRGB(100, 100, 100), Size = UDim2.new(1, 0, 0, 18) })
-new("Frame", { Parent = paper, BackgroundColor3 = Color3.fromRGB(34, 34, 34), BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 2), Position = UDim2.fromOffset(0, 22) })
-local qLabel = label({ Parent = paper, Text = "", TextSize = 18, TextColor3 = Color3.fromRGB(34, 34, 34), Size = UDim2.new(1, 0, 0, 48), Position = UDim2.fromOffset(0, 30) })
+local paper = card({ Parent = root, BackgroundColor3 = C.paper, AnchorPoint = Vector2.new(1, 1), Size = UDim2.fromOffset(460, 430), Position = UDim2.new(1, -16, 1, -16), Visible = false })
+pad(22, 18).Parent = paper
+local paperHead = text({ Parent = paper, Text = "2027학년도 대학수학능력시험", Font = F.mid, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 16) })
+local paperNum = text({ Parent = paper, Text = "", Font = F.mid, TextSize = 12, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, 0, 0, 16) })
+new("Frame", { Parent = paper, BackgroundColor3 = C.text, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 2), Position = UDim2.fromOffset(0, 24) })
+local qLabel = text({ Parent = paper, Text = "", Font = F.bold, TextSize = 18, Size = UDim2.new(1, 0, 0, 52), Position = UDim2.fromOffset(0, 36), TextYAlignment = Enum.TextYAlignment.Top })
+
 local choiceBtns = {}
 local picked = nil
 for i = 1, 5 do
-	local b = new("TextButton", { Parent = paper, Text = "", Font = Enum.Font.Gotham, TextSize = 16, TextColor3 = Color3.fromRGB(34, 34, 34), TextXAlignment = Enum.TextXAlignment.Left, BackgroundColor3 = Color3.fromRGB(239, 231, 207), BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36), Position = UDim2.fromOffset(0, 82 + (i - 1) * 40), AutoButtonColor = false }, { corner(6), pad(8) })
-	local st = stroke(Color3.fromRGB(34, 34, 34), 2)
-	st.Enabled = false
+	local b = new("TextButton", {
+		Parent = paper,
+		Text = "",
+		Font = F.reg,
+		TextSize = 16,
+		TextColor3 = C.text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundColor3 = C.paper,
+		AutoButtonColor = false,
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.fromOffset(0, 94 + (i - 1) * 46),
+	}, { corner(8), pad(12, 0) })
+	local st = stroke(C.line, 1)
 	st.Parent = b
 	b.MouseButton1Click:Connect(function()
 		picked = i
 		for j, other in ipairs(choiceBtns) do
-			other.BackgroundTransparency = j == i and 0 or 1
-			other.UIStroke.Enabled = j == i
+			local on = j == i
+			other.BackgroundColor3 = on and Color3.fromRGB(232, 237, 250) or C.paper
+			other.UIStroke.Color = on and C.accent or C.line
+			other.UIStroke.Thickness = on and 2 or 1
 		end
 	end)
 	choiceBtns[i] = b
 end
-local submitBtn = button({ Parent = paper, Text = "답 제출 ➜", TextSize = 18, BackgroundColor3 = C.good, TextColor3 = Color3.fromRGB(16, 34, 17), Size = UDim2.new(0, 140, 0, 40), Position = UDim2.new(0, 0, 1, -40) })
+local submitBtn = button({ Parent = paper, Text = "답안 제출", TextSize = 16, AnchorPoint = Vector2.new(1, 1), Size = UDim2.fromOffset(140, 42), Position = UDim2.fromScale(1, 1) })
+local paperMsg = text({ Parent = paper, Text = "", TextSize = 13, TextColor3 = C.danger, AnchorPoint = Vector2.new(0, 1), Size = UDim2.new(1, -150, 0, 42), Position = UDim2.fromScale(0, 1) })
 
 -------------------------------------------------------------------
--- 영역전개 오버레이
+-- 영역전개 (배경 없이 사진과 대사만)
 -------------------------------------------------------------------
--- 배경 없이 사진과 대사만 화면 위에 뜸 (검은 화면 없음)
-local domain = new("Frame", { Parent = gui, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
-local domainImg = new("ImageLabel", { Parent = domain, ZIndex = 51, Image = Shared.DOMAIN_IMAGE, BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.45, 0.5), Position = UDim2.fromScale(0.5, 0.42) })
-local domainText = label({ Parent = domain, ZIndex = 52, Text = "\"" .. Shared.DOMAIN_LINE .. "\"", Font = Enum.Font.GothamBlack, TextSize = 54, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = Color3.fromRGB(76, 201, 240), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -20, 0, 70), Position = UDim2.fromScale(0.5, 0.72) })
-local domainWho = label({ Parent = domain, ZIndex = 52, Text = "", TextSize = 22, TextColor3 = C.accent, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -20, 0, 30), Position = UDim2.fromScale(0.5, 0.84) })
+local domain = new("Frame", { Parent = root, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
+local domainImg = new("ImageLabel", { Parent = domain, ZIndex = 51, Image = Shared.DOMAIN_IMAGE, BackgroundTransparency = 1, ScaleType = Enum.ScaleType.Fit, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.4, 0.45), Position = UDim2.fromScale(0.5, 0.42) })
+local domainText = text({ Parent = domain, ZIndex = 52, Text = Shared.DOMAIN_LINE, Font = F.bold, TextSize = 48, TextColor3 = Color3.new(1, 1, 1), TextStrokeColor3 = Color3.fromRGB(20, 40, 90), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 60), Position = UDim2.fromScale(0.5, 0.7) })
+local domainWho = text({ Parent = domain, ZIndex = 52, Text = "", Font = F.bold, TextSize = 20, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.new(1, -40, 0, 28), Position = UDim2.fromScale(0.5, 0.8) })
 
 -------------------------------------------------------------------
 -- 결과창
 -------------------------------------------------------------------
-local modal = new("Frame", { Parent = gui, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, Size = UDim2.fromScale(1, 1), ZIndex = 40, Visible = false })
-local box = new("Frame", { Parent = modal, ZIndex = 41, BackgroundColor3 = C.panel, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(420, 300) }, { corner(16), stroke(C.accent, 3), pad(20) })
-local mTitle = label({ Parent = box, ZIndex = 42, Text = "", Font = Enum.Font.GothamBlack, TextSize = 30, TextColor3 = C.accent, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 40) })
-local mGrade = label({ Parent = box, ZIndex = 42, Text = "", Font = Enum.Font.GothamBlack, TextSize = 60, TextColor3 = C.warn, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 80), Position = UDim2.fromOffset(0, 44) })
-local mDesc = label({ Parent = box, ZIndex = 42, Text = "", Font = Enum.Font.Gotham, TextSize = 16, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 50), Position = UDim2.fromOffset(0, 130) })
-local retryBtn = button({ Parent = box, ZIndex = 42, Text = "다시 하기", TextSize = 20, Size = UDim2.new(1, 0, 0, 48), Position = UDim2.new(0, 0, 1, -48) })
+local modal = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 40, Visible = false })
+local box = card({ Parent = modal, ZIndex = 41, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(380, 280) })
+pad(24).Parent = box
+local mTitle = text({ Parent = box, ZIndex = 42, Text = "", Font = F.bold, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 28) })
+local mGrade = text({ Parent = box, ZIndex = 42, Text = "", Font = F.bold, TextSize = 52, TextColor3 = C.accent, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 70), Position = UDim2.fromOffset(0, 36) })
+local mDesc = text({ Parent = box, ZIndex = 42, Text = "", TextSize = 14, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 112) })
+local retryBtn = button({ Parent = box, ZIndex = 42, Text = "확인", TextSize = 16, AnchorPoint = Vector2.new(0, 1), Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromScale(0, 1) })
 
 -------------------------------------------------------------------
 -- 부정행위 목록
@@ -143,9 +212,11 @@ local retryBtn = button({ Parent = box, ZIndex = 42, Text = "다시 하기", Tex
 local cheats = {}
 local selected = 1
 
-local function bar(parent, y, pct, color)
-	local bg = new("Frame", { Parent = parent, BackgroundColor3 = C.bg, Size = UDim2.new(1, 0, 0, 6), Position = UDim2.fromOffset(0, y) }, { corner(3) })
-	new("Frame", { Parent = bg, BackgroundColor3 = color, Size = UDim2.new(pct / 100, 0, 1, 0) }, { corner(3) })
+local function meter(parent, y, name, pct, color)
+	text({ Parent = parent, Text = name, TextSize = 11, TextColor3 = C.muted, Size = UDim2.new(0, 60, 0, 12), Position = UDim2.fromOffset(0, y) })
+	text({ Parent = parent, Text = pct .. "%", Font = F.mid, TextSize = 11, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 40, 0, 12), Position = UDim2.new(1, -40, 0, y) })
+	local bg = new("Frame", { Parent = parent, BackgroundColor3 = C.sub, Size = UDim2.new(1, -120, 0, 4), Position = UDim2.fromOffset(64, y + 4) }, { corner(2) })
+	new("Frame", { Parent = bg, BackgroundColor3 = color, Size = UDim2.new(pct / 100, 0, 1, 0) }, { corner(2) })
 end
 
 local function renderCheats()
@@ -155,33 +226,29 @@ local function renderCheats()
 		end
 	end
 	for i, c in ipairs(cheats) do
-		local card = new("TextButton", { Parent = list, LayoutOrder = i, Text = "", AutoButtonColor = true, BackgroundColor3 = C.panel2, Size = UDim2.new(1, -6, 0, 98) }, { corner(10), pad(8) })
-		local st = stroke(i == selected and C.warn or C.panel2, 2)
-		st.Parent = card
-		label({ Parent = card, Text = c.name, Font = Enum.Font.GothamBlack, TextSize = 15, Size = UDim2.new(1, 0, 0, 18) })
-		label({ Parent = card, Text = c.type, Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Color3.fromRGB(76, 201, 240), Size = UDim2.new(1, 0, 0, 16), Position = UDim2.fromOffset(0, 20) })
-		label({ Parent = card, Text = "성공률 " .. c.success .. "%", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 14), Position = UDim2.fromOffset(0, 38) })
-		bar(card, 53, c.success, C.good)
-		label({ Parent = card, Text = "들킬 확률 " .. c.risk .. "%", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 14), Position = UDim2.fromOffset(0, 62) })
-		bar(card, 77, c.risk, C.accent)
-		card.MouseButton1Click:Connect(function()
+		local on = i == selected
+		local item = new("TextButton", { Parent = list, LayoutOrder = i, Text = "", AutoButtonColor = false, BackgroundColor3 = on and Color3.fromRGB(240, 243, 251) or C.surface, Size = UDim2.new(1, -4, 0, 76) }, { corner(8), pad(12, 10) })
+		local st = stroke(on and C.accent or C.line, on and 2 or 1)
+		st.Parent = item
+		text({ Parent = item, Text = c.name, Font = F.bold, TextSize = 14, Size = UDim2.new(1, -90, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd })
+		text({ Parent = item, Text = c.type, TextSize = 11, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 90, 0, 18), Position = UDim2.new(1, -90, 0, 0) })
+		meter(item, 26, "성공률", c.success, C.ok)
+		meter(item, 42, "적발 확률", c.risk, C.danger)
+		item.MouseButton1Click:Connect(function()
 			selected = i
-			curLabel.Text = "사용 중: " .. c.name
 			renderCheats()
 		end)
 	end
-	if cheats[selected] then
-		curLabel.Text = "사용 중: " .. cheats[selected].name
-	end
+	curLabel.Text = "선택: " .. (cheats[selected] and cheats[selected].name or "-")
 end
 
 local function addCheat(name)
-	name = string.gsub(name, "^%s+", "")
+	name = string.gsub(name or "", "^%s+", "")
 	name = string.gsub(name, "%s+$", "")
+	name = Shared.clip(name, 20)
 	if name == "" then
 		return
 	end
-	name = string.sub(name, 1, 40)
 	for i, c in ipairs(cheats) do
 		if c.name == name then
 			selected = i
@@ -198,14 +265,18 @@ for _, n in ipairs({ "옆자리 친구", "손바닥 필기", "스마트워치" }
 	addCheat(n)
 end
 
-addBtn.MouseButton1Click:Connect(function()
-	addCheat(input.Text)
-	input.Text = ""
-end)
+-- 한글 입력: 조합 중인 마지막 글자가 확정된 뒤에 읽도록 한 프레임 늦게 처리
+local function submitInput()
+	task.defer(function()
+		local t = input.Text
+		input.Text = ""
+		addCheat(t)
+	end)
+end
+addBtn.MouseButton1Click:Connect(submitInput)
 input.FocusLost:Connect(function(enter)
 	if enter then
-		addCheat(input.Text)
-		input.Text = ""
+		submitInput()
 	end
 end)
 
@@ -216,17 +287,31 @@ local logs = {}
 local timeLeft, suspicion, qNum, qTotal = Shared.TIME_LIMIT, 0, 0, Shared.TOTAL_Q
 local cheatingUntil = nil
 local cheatDur = Shared.CHEAT_TIME
+local inExam = false
 
-local function updateHud()
-	hud.Text = string.format("문제 %d / %d   ⏱ %d:%02d   👀 의심도 %d%%", qNum, qTotal, math.floor(timeLeft / 60), timeLeft % 60, suspicion)
+local function updateStatus()
+	if not inExam then
+		status.Text = "대기 중"
+		return
+	end
+	status.Text = string.format("문제 %d / %d     남은 시간 %d:%02d     의심도 %d%%", qNum, qTotal, math.floor(timeLeft / 60), timeLeft % 60, suspicion)
+end
+
+local function setExamMode(on)
+	inExam = on
+	startBtn.Visible = not on
+	cheatBtn.Visible = on
+	paper.Visible = on
+	progBg.Visible = false
+	hintLabel.Text = ""
+	updateStatus()
 end
 
 startBtn.MouseButton1Click:Connect(function()
 	local c = cheats[selected]
-	if not c then
-		return
+	if c then
+		remote:FireServer("Start", c.name)
 	end
-	remote:FireServer("Start", c.name)
 end)
 
 cheatBtn.MouseButton1Click:Connect(function()
@@ -238,38 +323,36 @@ end)
 
 submitBtn.MouseButton1Click:Connect(function()
 	if not picked then
-		hintLabel.TextColor3 = C.warn
-		hintLabel.Text = "답을 골라주세요!"
+		paperMsg.Text = "답을 선택하세요."
 		return
 	end
+	paperMsg.Text = ""
 	remote:FireServer("Answer", picked)
 end)
 
 retryBtn.MouseButton1Click:Connect(function()
 	modal.Visible = false
-	startBtn.Visible = true
-	cheatBox.Visible = false
-	paper.Visible = false
+	setExamMode(false)
 end)
 
 RunService.RenderStepped:Connect(function()
 	if cheatingUntil then
-		local left = cheatingUntil - os.clock()
-		progFill.Size = UDim2.new(math.clamp(1 - left / cheatDur, 0, 1), 0, 1, 0)
+		local remain = cheatingUntil - os.clock()
+		progFill.Size = UDim2.new(math.clamp(1 - remain / cheatDur, 0, 1), 0, 1, 0)
 	end
 end)
 
 local function showDomain(who)
-	domainWho.Text = who .. " 적발!"
+	domainWho.Text = who .. " 적발"
 	domainImg.Visible = Shared.DOMAIN_IMAGE ~= "rbxassetid://0"
 	domainImg.ImageTransparency = 1
 	domainText.TextTransparency = 1
-	domainImg.Size = UDim2.fromScale(0.6, 0.65)
+	domainText.TextStrokeTransparency = 1
+	domainImg.Size = UDim2.fromScale(0.55, 0.6)
 	domain.Visible = true
 	local fast = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(domainImg, fast, { ImageTransparency = 0, Size = UDim2.fromScale(0.45, 0.5) }):Play()
-	TweenService:Create(domainText, fast, { TextTransparency = 0 }):Play()
-	-- 흔들림
+	TweenService:Create(domainImg, fast, { ImageTransparency = 0, Size = UDim2.fromScale(0.4, 0.45) }):Play()
+	TweenService:Create(domainText, fast, { TextTransparency = 0, TextStrokeTransparency = 0 }):Play()
 	local base = UDim2.fromScale(0.5, 0.42)
 	local t0 = os.clock()
 	local conn
@@ -283,8 +366,8 @@ local function showDomain(who)
 	end)
 	task.delay(1.5, function()
 		local slow = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		TweenService:Create(domainImg, slow, { ImageTransparency = 1, Size = UDim2.fromScale(0.3, 0.35) }):Play()
-		TweenService:Create(domainText, slow, { TextTransparency = 1 }):Play()
+		TweenService:Create(domainImg, slow, { ImageTransparency = 1, Size = UDim2.fromScale(0.3, 0.32) }):Play()
+		TweenService:Create(domainText, slow, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		task.wait(0.5)
 		domain.Visible = false
 	end)
@@ -292,37 +375,40 @@ end
 
 remote.OnClientEvent:Connect(function(action, data, extra)
 	if action == "Question" then
-		startBtn.Visible = false
-		cheatBox.Visible = true
-		paper.Visible = true
+		if not inExam then
+			setExamMode(true)
+		end
 		modal.Visible = false
 		qNum, qTotal = data.num, data.total
 		if data.num == 1 then
 			timeLeft, suspicion = Shared.TIME_LIMIT, 0
 		end
-		qLabel.Text = data.num .. ". " .. data.text
+		paperNum.Text = data.seat .. "번 좌석"
+		qLabel.Text = data.num .. ".  " .. data.text
 		picked = nil
+		paperMsg.Text = ""
 		for i, b in ipairs(choiceBtns) do
-			b.Text = Shared.NUM[i] .. " " .. tostring(data.options[i])
-			b.BackgroundTransparency = 1
-			b.UIStroke.Enabled = false
+			b.Text = Shared.NUM[i] .. "   " .. tostring(data.options[i])
+			b.BackgroundColor3 = C.paper
+			b.UIStroke.Color = C.line
+			b.UIStroke.Thickness = 1
 		end
 		hintLabel.Text = ""
-		updateHud()
+		updateStatus()
 	elseif action == "Timer" then
 		timeLeft, suspicion = data, extra
-		updateHud()
+		updateStatus()
 	elseif action == "CheatStart" then
 		cheatDur = data
 		cheatingUntil = os.clock() + data
 		progBg.Visible = true
 		hintLabel.TextColor3 = C.muted
-		hintLabel.Text = (cheats[selected] and cheats[selected].name or "") .. "(으)로 부정행위 중…"
+		hintLabel.Text = "시도 중…"
 	elseif action == "Hint" or action == "CheatCancel" then
 		cheatingUntil = nil
 		progBg.Visible = false
 		if action == "Hint" then
-			hintLabel.TextColor3 = C.good
+			hintLabel.TextColor3 = C.ok
 			hintLabel.Text = data
 		end
 	elseif action == "Domain" then
@@ -340,14 +426,18 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 		progBg.Visible = false
 		paper.Visible = false
 		if data.caught then
-			mTitle.Text = "당신은 가루가 되었습니다"
-			mGrade.Text = "💀"
-			mDesc.Text = string.format("감독관에게 적발! (푼 문제 %d개 중 %d개 정답이었음)", data.answered, data.score)
+			mTitle.Text = "부정행위 적발"
+			mGrade.Text = "실격"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("가루가 되었습니다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
 		else
-			mTitle.Text = data.timeUp and "시간 종료!" or "시험 종료!"
+			mTitle.Text = data.timeUp and "시험 시간 종료" or "시험 종료"
 			mGrade.Text = data.grade .. "등급"
-			mDesc.Text = string.format("%d문제 중 %d개 정답 · 가루가 된 친구 %d명", Shared.TOTAL_Q, data.score, data.dead)
+			mGrade.TextColor3 = C.accent
+			mDesc.Text = string.format("%d문제 중 %d개 정답", Shared.TOTAL_Q, data.score)
 		end
 		modal.Visible = true
 	end
 end)
+
+updateStatus()

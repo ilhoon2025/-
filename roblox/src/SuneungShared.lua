@@ -32,6 +32,24 @@ Shared.BANK = {
 local COPY_WORDS = { "옆", "짝", "친구", "앞사람", "뒷사람", "커닝", "베끼" }
 local TYPES = { "전자기기형", "아날로그형", "초자연형", "물리형", "정신력형", "동물형" }
 
+-- 한글이 깨지지 않게 글자 수 기준으로 자르기
+function Shared.clip(str, n)
+	local out, count = {}, 0
+	local ok = pcall(function()
+		for _, c in utf8.codes(str) do
+			count = count + 1
+			if count > n then
+				break
+			end
+			out[#out + 1] = utf8.char(c)
+		end
+	end)
+	if not ok then
+		return ""
+	end
+	return table.concat(out)
+end
+
 -- 문자열 → 숫자 (항상 같은 값)
 function Shared.hash(str)
 	local h = 7
@@ -52,7 +70,7 @@ function Shared.makeCheat(name)
 	end
 	local cheat = { name = name, copy = copy }
 	if copy then
-		cheat.type = "옆사람 베끼기형 (시험지가 다른데…?)"
+		cheat.type = "옆사람 베끼기형"
 		cheat.success = 90
 	else
 		cheat.type = TYPES[r:NextInteger(1, #TYPES)]
