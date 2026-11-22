@@ -4547,6 +4547,89 @@ local function sceneDream()
 end
 
 -------------------------------------------------------------------
+-- 영화 같은 엔딩 크레딧: 한국 수능 부정행위
+-------------------------------------------------------------------
+local function playCredits()
+	local cg = new("ScreenGui", { Name = "Credits", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 100, Parent = player:WaitForChild("PlayerGui") })
+	local bg = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 1 })
+	-- 영화 화면 같은 위아래 검은 띠
+	local barTop = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 0), ZIndex = 10 })
+	local barBot = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), ZIndex = 10 })
+	TweenService:Create(barTop, TweenInfo.new(1.2), { Size = UDim2.fromScale(1, 0.12) }):Play()
+	TweenService:Create(barBot, TweenInfo.new(1.2), { Size = UDim2.fromScale(1, 0.12) }):Play()
+	task.wait(1.4)
+	TweenService:Create(bg, TweenInfo.new(1.5), { BackgroundTransparency = 0 }):Play()
+	task.wait(1.6)
+
+	local function big(str, size, color, y, font)
+		return text({ Parent = cg, ZIndex = 5, Text = str, Font = font or F.bold, TextScaled = true, TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, y) })
+	end
+	-- 제목
+	local title = big("한국 수능 부정행위", 0.14, Color3.new(1, 1, 1), 0.46)
+	local subtitle = big("— 한 수험생의 길고 긴 하루 —", 0.04, Color3.fromRGB(180, 180, 180), 0.58, F.mid)
+	title.TextTransparency, subtitle.TextTransparency = 1, 1
+	TweenService:Create(title, TweenInfo.new(2), { TextTransparency = 0 }):Play()
+	task.wait(1)
+	TweenService:Create(subtitle, TweenInfo.new(2), { TextTransparency = 0 }):Play()
+	task.wait(4)
+	TweenService:Create(title, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+	TweenService:Create(subtitle, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+	task.wait(1.6)
+	title:Destroy()
+	subtitle:Destroy()
+
+	-- 올라가는 자막
+	local lines = {
+		{ "출연", true },
+		{ "수험생 · " .. player.DisplayName },
+		{ "뉴비 감독관 · 뉴비 감독관" },
+		{ "저격수 · 저격수 100명" },
+		{ "매점 아주머니 · 매점 아주머니" },
+		{ "부정행위 전문점 사장 · 전문점 사장" },
+		{ "강화 장인 · 강화 장인" },
+		{ "도로의 차 · 베이컨" },
+		{ "주차장의 차 · 뉴비 차 50대" },
+		{ "" },
+		{ "특별 출연", true },
+		{ "AI 안경 (성공률 100%)" },
+		{ "1등급 상품권" },
+		{ "핵폭탄 · 홍수 · 똥" },
+		{ "" },
+		{ "등장한 시험", true },
+		{ "수능 · 서울대 · 면접 · 군대 · 인생 · 천국 · 할렐루야" },
+		{ "K부대 훈련 25개" },
+		{ "" },
+		{ "촬영 장소", true },
+		{ "교실 · 도로 · 매점 · 핵 벙커 · K부대" },
+		{ "" },
+		{ "이 게임의 모든 부정행위는 꿈입니다." },
+		{ "실제 시험에서는 절대 따라 하지 마세요." },
+		{ "" },
+		{ "플레이해 주셔서 감사합니다", true },
+	}
+	local roll = new("Frame", { Parent = cg, BackgroundTransparency = 1, ZIndex = 5, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.7, 0.06 * #lines), Position = UDim2.fromScale(0.5, 1) })
+	for i, l in ipairs(lines) do
+		text({ Parent = roll, ZIndex = 6, Text = l[1], Font = l[2] and F.bold or F.mid, TextScaled = true, TextColor3 = l[2] and Color3.fromRGB(255, 215, 120) or Color3.fromRGB(230, 230, 230), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1 / #lines, -10), Position = UDim2.fromScale(0, (i - 1) / #lines) })
+	end
+	local dur = 22
+	TweenService:Create(roll, TweenInfo.new(dur, Enum.EasingStyle.Linear), { Position = UDim2.fromScale(0.5, -0.06 * #lines) }):Play()
+	task.wait(dur)
+	roll:Destroy()
+
+	-- THE END
+	local the = big("THE END", 0.16, Color3.new(1, 1, 1), 0.5)
+	the.TextTransparency = 1
+	TweenService:Create(the, TweenInfo.new(2), { TextTransparency = 0 }):Play()
+	task.wait(4)
+	TweenService:Create(the, TweenInfo.new(1.5), { TextTransparency = 1 }):Play()
+	TweenService:Create(bg, TweenInfo.new(1.5), { BackgroundTransparency = 1 }):Play()
+	TweenService:Create(barTop, TweenInfo.new(1.5), { Size = UDim2.fromScale(1, 0) }):Play()
+	TweenService:Create(barBot, TweenInfo.new(1.5), { Size = UDim2.fromScale(1, 0) }):Play()
+	task.wait(1.6)
+	cg:Destroy()
+end
+
+-------------------------------------------------------------------
 -- K부대 (군대 게임 모드) 화면
 -------------------------------------------------------------------
 local armyMode = false
@@ -4636,6 +4719,8 @@ armyBack.MouseButton1Click:Connect(function()
 	armyGui.Enabled = false
 	armyMode = false
 	UserInputService.MouseIconEnabled = true
+	-- 영화처럼 엔딩 크레딧을 보고 학교로
+	playCredits()
 	root.Visible = true
 	remote:FireServer("LeaveArmy")
 end)
