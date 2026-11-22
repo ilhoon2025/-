@@ -4683,7 +4683,7 @@ local function playEnding()
 	endingLayer.Visible = false
 	setExamMode(false)
 	status.Text = "고등학교 수업 시간"
-	-- 마지막: 동굴 부대 군대 게임 시작
+	-- 마지막: K부대 군대 게임 시작
 	startArmy()
 end
 
