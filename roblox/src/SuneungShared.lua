@@ -6,6 +6,10 @@ local Shared = {}
 Shared.DOMAIN_IMAGE = "rbxassetid://0"
 
 Shared.DOMAIN_LINE = "료이키 텐카이 무량공처!"
+
+-- ★ 배경음악: music 폴더의 mp3를 Roblox에 올린 뒤 나온 오디오 ID로 바꾸세요. (0 이면 음악 없음)
+Shared.GAME_MUSIC = "rbxassetid://0" -- game_bgm.mp3 (게임 중)
+Shared.ENDING_MUSIC = "rbxassetid://0" -- ending_bgm.mp3 (엔딩·크레딧)
 Shared.TOTAL_Q = 10
 Shared.TIME_LIMIT = 120
 Shared.CHEAT_TIME = 3 -- 부정행위에 걸리는 시간(초)

@@ -100,6 +100,38 @@ camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 fit()
 
 -------------------------------------------------------------------
+-- 배경음악 (내 화면에서만 재생)
+-------------------------------------------------------------------
+local SoundService = game:GetService("SoundService")
+local function makeSound(id, vol)
+	local snd = Instance.new("Sound")
+	snd.SoundId = id
+	snd.Looped = true
+	snd.Volume = vol
+	snd.Parent = SoundService
+	return snd
+end
+local music = {
+	game = makeSound(Shared.GAME_MUSIC, 0.35),
+	ending = makeSound(Shared.ENDING_MUSIC, 0.5),
+}
+local currentMusic = nil
+function playMusic(which)
+	if currentMusic == which then
+		return
+	end
+	currentMusic = which
+	for name, snd in pairs(music) do
+		if name == which and snd.SoundId ~= "rbxassetid://0" then
+			snd.TimePosition = 0
+			snd:Play()
+		else
+			snd:Stop()
+		end
+	end
+end
+
+-------------------------------------------------------------------
 -- 처음 화면: 플레이하기를 눌러야 입장
 -------------------------------------------------------------------
 root.Visible = false
@@ -126,6 +158,7 @@ playBtn.MouseButton1Click:Connect(function()
 	title:Destroy()
 	root.Visible = true
 	remote:FireServer("Play")
+	playMusic("game")
 end)
 
 -------------------------------------------------------------------
@@ -1772,8 +1805,9 @@ end
 -- 영화 같은 엔딩 크레딧: 한국 수능 부정행위
 -------------------------------------------------------------------
 local function playCredits()
+	playMusic("ending")
 	local cg = new("ScreenGui", { Name = "Credits", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 100, Parent = player:WaitForChild("PlayerGui") })
-	local bg = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 1 })
+	local bg = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 1 })
 	-- 영화 화면 같은 위아래 검은 띠
 	local barTop = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 0), ZIndex = 10 })
 	local barBot = new("Frame", { Parent = cg, BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0), ZIndex = 10 })
@@ -1784,11 +1818,11 @@ local function playCredits()
 	task.wait(1.6)
 
 	local function big(str, size, color, y, font)
-		return text({ Parent = cg, ZIndex = 5, Text = str, Font = Enum.Font.GothamBlack, TextStrokeTransparency = 0.6, TextScaled = true, TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, y) })
+		return text({ Parent = cg, ZIndex = 5, Text = str, Font = Enum.Font.GothamBlack, TextStrokeTransparency = 0.6, TextScaled = true, TextColor3 = color, TextStrokeColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, y) })
 	end
 	-- 제목
-	local title = big("한국 수능 부정행위", 0.14, Color3.new(1, 1, 1), 0.46)
-	local subtitle = big("— 한 수험생의 길고 긴 하루 —", 0.04, Color3.fromRGB(180, 180, 180), 0.58, F.mid)
+	local title = big("한국 수능 부정행위", 0.14, Color3.fromRGB(20, 20, 25), 0.46)
+	local subtitle = big("— 한 수험생의 길고 긴 하루 —", 0.04, Color3.fromRGB(90, 90, 95), 0.58, F.mid)
 	title.TextTransparency, subtitle.TextTransparency = 1, 1
 	TweenService:Create(title, TweenInfo.new(2), { TextTransparency = 0 }):Play()
 	task.wait(1)
@@ -1834,7 +1868,7 @@ local function playCredits()
 	}
 	local roll = new("Frame", { Parent = cg, BackgroundTransparency = 1, ZIndex = 5, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.7, 0.06 * #lines), Position = UDim2.fromScale(0.5, 1) })
 	for i, l in ipairs(lines) do
-		text({ Parent = roll, ZIndex = 6, Text = l[1], Font = l[2] and Enum.Font.GothamBlack or F.bold, TextScaled = true, TextColor3 = l[2] and Color3.fromRGB(255, 215, 120) or Color3.fromRGB(230, 230, 230), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1 / #lines, -10), Position = UDim2.fromScale(0, (i - 1) / #lines) })
+		text({ Parent = roll, ZIndex = 6, Text = l[1], Font = l[2] and Enum.Font.GothamBlack or F.bold, TextScaled = true, TextColor3 = l[2] and Color3.fromRGB(180, 120, 0) or Color3.fromRGB(35, 35, 40), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1 / #lines, -10), Position = UDim2.fromScale(0, (i - 1) / #lines) })
 	end
 	local dur = 22
 	TweenService:Create(roll, TweenInfo.new(dur, Enum.EasingStyle.Linear), { Position = UDim2.fromScale(0.5, -0.06 * #lines) }):Play()
@@ -1842,7 +1876,7 @@ local function playCredits()
 	roll:Destroy()
 
 	-- THE END
-	local the = big("THE END", 0.16, Color3.new(1, 1, 1), 0.5)
+	local the = big("THE END", 0.16, Color3.fromRGB(20, 20, 25), 0.5)
 	the.TextTransparency = 1
 	TweenService:Create(the, TweenInfo.new(2), { TextTransparency = 0 }):Play()
 	task.wait(4)
@@ -1852,6 +1886,7 @@ local function playCredits()
 	TweenService:Create(barBot, TweenInfo.new(1.5), { Size = UDim2.fromScale(1, 0) }):Play()
 	task.wait(1.6)
 	cg:Destroy()
+	playMusic("game")
 end
 
 -------------------------------------------------------------------
@@ -1951,6 +1986,7 @@ armyBack.MouseButton1Click:Connect(function()
 end)
 
 local function startArmy()
+	playMusic("game")
 	armyMode = true
 	root.Visible = false
 	armyGui.Enabled = true
@@ -1959,6 +1995,7 @@ local function startArmy()
 end
 
 local function playEnding()
+	playMusic("ending")
 	root.Visible = false
 	endingLayer.Visible = true
 	-- 매번 새로 섞은 50문제씩

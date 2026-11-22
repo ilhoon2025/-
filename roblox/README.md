@@ -15,6 +15,13 @@ Roblox는 외부 사진을 바로 못 쓰기 때문에 업로드가 필요해요
    ```
    ID가 `0`이면 사진 없이 대사만 나와요.
 
+## 배경음악 넣기 (한 번만)
+`music/game_bgm.mp3`(게임 중), `music/ending_bgm.mp3`(엔딩·크레딧)는 직접 만든 곡이에요.
+1. create.roblox.com → 개발자 아이템 → 오디오 → 두 파일 업로드 (또는 Studio 에셋 관리자 → 가져오기)
+2. 각각의 오디오 ID를 복사
+3. `ReplicatedStorage > SuneungShared` 의 `Shared.GAME_MUSIC`, `Shared.ENDING_MUSIC` 에 붙여넣기
+   (예: `"rbxassetid://1234567890"`)
+
 ## 게임 방법
 - 왼쪽 **✏️ 부정행위 적기!** 에 아무거나 적고 추가 → 고르고 **시험 시작**
 - 내 캐릭터가 책상에 앉고 10문제(2분)를 풉니다.
