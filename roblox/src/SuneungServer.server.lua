@@ -300,8 +300,37 @@ local function buildNoobCar()
 	return m
 end
 
+-- 베이컨 모양 차 (도로를 달리는 차): 물결치는 베이컨 한 줄 + 바퀴
+local function buildBaconCar()
+	local m = Instance.new("Model")
+	m.Name = "BaconCar"
+	local MEAT = Color3.fromRGB(176, 52, 42)
+	local DARK = Color3.fromRGB(130, 35, 30)
+	local FAT = Color3.fromRGB(250, 220, 200)
+	local SEG = 6
+	local segLen = 12 / SEG
+	for i = 0, SEG - 1 do
+		local z = -6 + segLen * (i + 0.5)
+		local y = 2.2 + math.sin(i * 1.1) * 0.6
+		local tilt = math.cos(i * 1.1) * 0.35
+		local cf = CFrame.new(0, y, z) * CFrame.Angles(tilt, 0, 0)
+		-- 길이 방향 줄무늬: 살코기 / 비계 / 살코기
+		part({ Parent = m, Size = Vector3.new(2.4, 0.7, segLen + 0.15), CFrame = cf * CFrame.new(-1.8, 0, 0), Color = (i % 2 == 0) and MEAT or DARK, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+		part({ Parent = m, Size = Vector3.new(1.2, 0.72, segLen + 0.15), CFrame = cf, Color = FAT, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+		part({ Parent = m, Size = Vector3.new(2.4, 0.7, segLen + 0.15), CFrame = cf * CFrame.new(1.8, 0, 0), Color = (i % 2 == 0) and DARK or MEAT, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+	end
+	for _, x in ipairs({ -2.6, 2.6 }) do
+		for _, z in ipairs({ -4, 4 }) do
+			part({ Parent = m, Size = Vector3.new(0.8, 1.8, 1.8), CFrame = CFrame.new(x, 0.9, z), Color = Color3.fromRGB(25, 25, 25), Shape = Enum.PartType.Cylinder, CanCollide = false })
+		end
+	end
+	local body = part({ Parent = m, Name = "Body", Size = Vector3.new(6, 0.2, 12), CFrame = CFrame.new(0, 1.2, 0), Transparency = 1, CanCollide = false })
+	m.PrimaryPart = body
+	return m
+end
+
 local function spawnCar(lane)
-	local m = buildCar(CAR_COLORS[math.random(1, #CAR_COLORS)])
+	local m = buildBaconCar()
 	local z = -lane.dir * ROAD_LEN / 2
 	local car = { model = m, lane = lane, z = z, speed = math.random(90, 140) }
 	m:PivotTo(CFrame.new(lane.x, 0, z) * CFrame.Angles(0, lane.dir == 1 and math.pi or 0, 0))
