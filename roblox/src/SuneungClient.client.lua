@@ -1165,7 +1165,137 @@ local function sceneSNUExam()
 	task.wait(3)
 end
 
--- 마지막 장면: 폭발
+-- 엔딩 추가 시험들: 군대 → 인생 → (폭발) → 천국 → 할렐루야
+local EXTRA_EXAMS = {
+	army = {
+		title = "군대 시험", sub = "면접이 끝나자마자 입대 영장이 날아왔다.",
+		bg = Color3.fromRGB(95, 110, 70), titleColor = Color3.fromRGB(240, 240, 220), subColor = Color3.fromRGB(210, 220, 190),
+		questions = {
+			{ q = "군대에서 가장 중요한 것은?", a = { "전우애", "선임 눈치", "휴가", "짬밥" }, c = 1 },
+			{ q = "'다나까' 말투로 바른 것은?", a = { "알겠어요", "알겠습니다", "알았지?", "ㅇㅋ" }, c = 2 },
+			{ q = "기상 시간은?", a = { "06:00", "09:00", "12:00", "기상은 자유" }, c = 1 },
+		},
+		good = "충성! 무사히 전역했다.", bad = "영창 3일… 그래도 전역은 했다.",
+	},
+	life = {
+		title = "인생 시험", sub = "전역하고 나니 진짜 시험이 기다리고 있었다.",
+		bg = Color3.fromRGB(245, 232, 210), titleColor = Color3.fromRGB(80, 50, 20), subColor = Color3.fromRGB(120, 90, 60),
+		questions = {
+			{ q = "월급날 가장 먼저 할 일은?", a = { "저축", "전부 매점에서 쓰기", "부정행위 장비 구매", "핵폭탄 발사" }, c = 1 },
+			{ q = "행복의 조건은?", a = { "건강", "1등급", "AI 안경", "저격수 100명" }, c = 1 },
+			{ q = "부정행위는?", a = { "하면 안 된다", "안 들키면 된다", "AI 안경이면 괜찮다", "모르겠다" }, c = 1 },
+		},
+		good = "꽤 괜찮은 인생이었다…", bad = "후회가 많은 인생이었다…",
+	},
+	heaven = {
+		title = "천국 시험", sub = "폭발로 죽어서 구름 위 천국 입구에 도착했다.",
+		bg = Color3.fromRGB(200, 230, 255), titleColor = Color3.fromRGB(60, 90, 150), subColor = Color3.fromRGB(90, 120, 170),
+		questions = {
+			{ q = "살면서 부정행위를 한 적이 있나요?", a = { "없습니다", "있습니다", "기억이 안 납니다", "AI 안경이 했습니다" }, c = 2 },
+			{ q = "천국에 가져갈 수 있는 것은?", a = { "돈", "스마트워치", "착한 마음", "1등급 상품권" }, c = 3 },
+			{ q = "날개를 받으면 할 일은?", a = { "남을 돕기", "커닝", "똥누기", "핵폭탄 발사" }, c = 1 },
+		},
+		good = "문지기: \"정직하군요. 들어오세요.\"", bad = "문지기: \"음… 마지막 기회를 주겠습니다.\"",
+	},
+	hallelujah = {
+		title = "할렐루야 시험", sub = "천국에도 마지막 시험이 있었다.",
+		bg = Color3.fromRGB(255, 236, 160), titleColor = Color3.fromRGB(150, 100, 0), subColor = Color3.fromRGB(170, 130, 40),
+		questions = {
+			{ q = "외칠 준비가 되었나요?", a = { "네", "아니오", "할렐루야!", "……" }, c = 3 },
+			{ q = "천국에서도 수능을 보나요?", a = { "본다", "안 본다", "부정행위만 본다", "모른다" }, c = 2 },
+			{ q = "마지막으로 크게 외쳐 주세요!", a = { "할렐루야!", "료이키 텐카이!", "펑!", "1등급!" }, c = 1 },
+		},
+		good = "할렐루야! 천국 입성!", bad = "다시 태어나서 수능부터 다시…",
+	},
+}
+
+local function sceneQuiz(cfg)
+	clearEnding()
+	endingLayer.BackgroundColor3 = cfg.bg
+	if cfg == EXTRA_EXAMS.heaven or cfg == EXTRA_EXAMS.hallelujah then
+		-- 구름
+		for i = 1, 7 do
+			local cl = new("Frame", { Parent = endingLayer, ZIndex = 151, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.2, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.12 + (i % 3) * 0.04, 0.08), Position = UDim2.fromScale((i - 0.5) / 7, i % 2 == 0 and 0.9 or 0.96) })
+			corner(1000).Parent = cl
+		end
+	end
+	local t = eText(cfg.title, 0.08, cfg.titleColor, 0.1, F.bold, 160)
+	fadeIn(t)
+	local sub = eText(cfg.sub, 0.035, cfg.subColor, 0.19, F.mid, 160)
+	local paperF = new("Frame", { Parent = endingLayer, ZIndex = 160, BackgroundColor3 = C.paper, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.6, 0.6), Position = UDim2.fromScale(0.5, 0.26) }, { corner(10), stroke() })
+	local qL = text({ Parent = paperF, ZIndex = 161, Text = "", Font = F.bold, TextScaled = true, Size = UDim2.fromScale(0.9, 0.14), Position = UDim2.fromScale(0.05, 0.05) })
+	local resultL = text({ Parent = paperF, ZIndex = 161, Text = "", Font = F.mid, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.9, 0.08), Position = UDim2.fromScale(0.05, 0.88) })
+	local btns = {}
+	for i = 1, 4 do
+		local b = button({ Parent = paperF, ZIndex = 161, Text = "", Font = F.mid, TextScaled = true, BackgroundColor3 = C.paper, TextColor3 = C.text, Size = UDim2.fromScale(0.9, 0.13), Position = UDim2.fromScale(0.05, 0.24 + (i - 1) * 0.16) }, false)
+		new("UIPadding", { Parent = b, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+		btns[i] = b
+	end
+	local score = 0
+	for n, item in ipairs(cfg.questions) do
+		qL.Text = n .. ".  " .. item.q
+		for i, b in ipairs(btns) do
+			b.Text = Shared.NUM[i] .. "  " .. item.a[i]
+			b.BackgroundColor3 = C.paper
+		end
+		local chosen
+		local conns = {}
+		for i, b in ipairs(btns) do
+			conns[i] = b.MouseButton1Click:Connect(function()
+				chosen = chosen or i
+			end)
+		end
+		repeat
+			task.wait()
+		until chosen
+		for _, c in ipairs(conns) do
+			c:Disconnect()
+		end
+		local ok = chosen == item.c
+		if ok then
+			score = score + 1
+		end
+		btns[item.c].BackgroundColor3 = Color3.fromRGB(210, 240, 215)
+		if not ok then
+			btns[chosen].BackgroundColor3 = Color3.fromRGB(250, 215, 215)
+		end
+		resultL.TextColor3 = ok and C.ok or C.danger
+		resultL.Text = ok and "정답" or "오답"
+		task.wait(0.9)
+		resultL.Text = ""
+	end
+	paperF:Destroy()
+	sub:Destroy()
+	local total = #cfg.questions
+	local r = eText(cfg.title .. " " .. score .. " / " .. total, 0.08, cfg.titleColor, 0.45, F.bold, 160)
+	fadeIn(r)
+	eText(score >= total - 1 and cfg.good or cfg.bad, 0.045, cfg.subColor, 0.56, F.mid, 160)
+	task.wait(3)
+	return score, total
+end
+
+-- 맨 마지막: 모든 시험 결과
+local function sceneFinal(score, total)
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(255, 248, 220)
+	local ok = score >= math.ceil(total * 0.7)
+	local t = eText(ok and "할렐루야!" or "환생", 0.14, ok and Color3.fromRGB(200, 140, 0) or Color3.fromRGB(80, 80, 90), 0.38, F.bold, 160)
+	fadeIn(t, 1)
+	local d = eText(ok and "모든 시험을 통과하고 천국에 들어갔다. 더 이상 시험은 없다." or "다시 태어났다. 눈을 떠 보니… 수능 시험장이다.", 0.045, Color3.fromRGB(90, 80, 60), 0.52, F.mid, 160)
+	fadeIn(d, 1.5)
+	eText("전체 시험 " .. score .. " / " .. total, 0.04, Color3.fromRGB(120, 110, 90), 0.6, F.mid, 160)
+	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "처음으로", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.78) })
+	new("UIPadding", { Parent = back, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+	local done = false
+	back.MouseButton1Click:Connect(function()
+		done = true
+	end)
+	repeat
+		task.wait()
+	until done
+end
+
+-- 폭발 장면
 local function sceneExplosion()
 	clearEnding()
 	endingLayer.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -1305,7 +1435,17 @@ local function playEnding()
 	sceneSNUExam()
 	sceneTwist()
 	sceneInterview()
+	local total, max = 0, 0
+	for _, key in ipairs({ "army", "life" }) do
+		local a, b = sceneQuiz(EXTRA_EXAMS[key])
+		total, max = total + a, max + b
+	end
 	sceneExplosion()
+	for _, key in ipairs({ "heaven", "hallelujah" }) do
+		local a, b = sceneQuiz(EXTRA_EXAMS[key])
+		total, max = total + a, max + b
+	end
+	sceneFinal(total, max)
 	clearEnding()
 	endingLayer.Visible = false
 	root.Visible = true
@@ -1373,7 +1513,7 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 			toast("감독관 시야(빨간 빛)를 피해 문으로 나가세요. 돌아오면 자리 근처에서 버튼을 누르세요.")
 		end
 	elseif action == "NukeWarn" then
-		toast(data .. " 님이 핵폭탄을 발사했습니다! " .. extra .. "초 후 도착!")
+		toast(data .. " 님이 핵폭탄을 발사했습니다! " .. extra .. "초 후 도착! 교실 뒤 왼쪽 핵 벙커로 대피!")
 		local warn = text({ Parent = gui, ZIndex = 190, Text = "핵폭탄 접근 중", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 60, 60), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.6, 0.1), Position = UDim2.fromScale(0.5, 0.3) })
 		task.spawn(function()
 			for _ = 1, extra * 2 do

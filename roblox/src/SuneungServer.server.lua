@@ -1746,6 +1746,47 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -------------------------------------------------------------------
+-- 핵 벙커 (교실 뒤쪽 왼편 구석): 안에 있으면 핵폭탄·홍수에도 안 죽음
+-------------------------------------------------------------------
+local BX0, BX1, BZ0, BZ1, BH = -68, -50, 60, 78, 10
+local function inBunker(pos)
+	return pos.X > BX0 + 1 and pos.X < BX1 - 1 and pos.Z > BZ0 + 1 and pos.Z < BZ1 - 1 and pos.Y < BH + 2
+end
+do
+	local concrete = { Color = Color3.fromRGB(120, 122, 118), Material = Enum.Material.Concrete }
+	local function c()
+		return { Color = concrete.Color, Material = concrete.Material }
+	end
+	box(BX0, 0, BZ0, BX1, BH, BZ0 + 1.5, c())
+	box(BX0, 0, BZ1 - 1.5, BX1, BH, BZ1, c())
+	box(BX0, 0, BZ0, BX0 + 1.5, BH, BZ1, c())
+	-- 입구 (교실 쪽)
+	box(BX1 - 1.5, 0, BZ0, BX1, BH, 66, c())
+	box(BX1 - 1.5, 0, 72, BX1, BH, BZ1, c())
+	box(BX1 - 1.5, 8, 66, BX1, BH, 72, c())
+	box(BX0, BH, BZ0, BX1, BH + 1.5, BZ1, c())
+	-- 노란 검정 경고 띠
+	for i = 0, 5 do
+		box(BX1 - 0.1, 8 + (i % 2) * 0, 66 + i, BX1 + 0.1, 8.6, 66 + i + 1, { Color = (i % 2 == 0) and Color3.fromRGB(240, 200, 30) or Color3.fromRGB(25, 25, 25), Material = Enum.Material.SmoothPlastic })
+	end
+	local sign = box(BX1 + 0.05, 8.7, 64, BX1 + 0.25, 10, 74, { Color = Color3.fromRGB(30, 30, 30) })
+	surfaceText(sign, Enum.NormalId.Right, "핵 벙커", Color3.fromRGB(255, 220, 60), Enum.Font.GothamBlack)
+	-- 안쪽: 조명, 의자, 통조림 선반
+	local lamp = box(-62, BH - 0.4, 68, -56, BH - 0.1, 70, { Color = Color3.fromRGB(255, 240, 200), Material = Enum.Material.Neon })
+	local l = Instance.new("PointLight")
+	l.Range = 18
+	l.Brightness = 1.2
+	l.Color = Color3.fromRGB(255, 220, 160)
+	l.Parent = lamp
+	box(BX0 + 2, 0, BZ0 + 2, BX0 + 4, 1.8, BZ1 - 2, { Color = Color3.fromRGB(90, 70, 50), Material = Enum.Material.Wood })
+	box(BX0 + 2, 0, BZ1 - 4, BX1 - 4, 6, BZ1 - 2, { Color = Color3.fromRGB(80, 85, 90), Material = Enum.Material.Metal })
+	for x = BX0 + 3, BX1 - 6, 1.5 do
+		part({ Size = Vector3.new(1, 1.2, 1), Position = Vector3.new(x, 2.6, BZ1 - 3), Color = Color3.fromRGB(200, 60, 40), Shape = Enum.PartType.Cylinder, Orientation = Vector3.new(0, 0, 90) })
+		part({ Size = Vector3.new(1, 1.2, 1), Position = Vector3.new(x, 4.6, BZ1 - 3), Color = Color3.fromRGB(60, 140, 60), Shape = Enum.PartType.Cylinder, Orientation = Vector3.new(0, 0, 90) })
+	end
+end
+
+-------------------------------------------------------------------
 -- 핵폭탄 (아무나 발사 가능, 60초에 한 번)
 -------------------------------------------------------------------
 local NUKE_COOLDOWN = 60
@@ -1755,7 +1796,7 @@ local NUKE_TARGET = Vector3.new(0, 0, 20) -- 교실 한가운데
 local function launchNuke(byPlayer)
 	lastNuke = os.clock()
 	logAll(byPlayer.DisplayName .. " 핵폭탄 발사!")
-	remote:FireAllClients("NukeWarn", byPlayer.DisplayName, 5)
+	remote:FireAllClients("NukeWarn", byPlayer.DisplayName, 10)
 	-- 하늘에서 떨어지는 미사일
 	local missile = part({ Size = Vector3.new(3, 3, 16), Color = Color3.fromRGB(230, 230, 230), Material = Enum.Material.Metal, CanCollide = false, CanQuery = false })
 	local tip = part({ Size = Vector3.new(3, 3, 3), Color = Color3.fromRGB(200, 30, 30), Shape = Enum.PartType.Ball, CanCollide = false, CanQuery = false })
@@ -1765,8 +1806,8 @@ local function launchNuke(byPlayer)
 	fire.Parent = missile
 	local start = NUKE_TARGET + Vector3.new(150, 700, -150)
 	local t0 = os.clock()
-	while os.clock() - t0 < 5 do
-		local k = (os.clock() - t0) / 5
+	while os.clock() - t0 < 10 do
+		local k = (os.clock() - t0) / 10
 		local p = start:Lerp(NUKE_TARGET, k * k)
 		local cf = CFrame.lookAt(p, NUKE_TARGET)
 		missile.CFrame = cf
@@ -1785,24 +1826,28 @@ local function launchNuke(byPlayer)
 	light.Color = Color3.fromRGB(255, 180, 80)
 	light.Parent = ball
 	TweenService:Create(ball, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(400, 400, 400), Color = Color3.fromRGB(255, 120, 30), Transparency = 0.4 }):Play()
-	-- 모든 플레이어 사망
+	-- 벙커 밖에 있는 모든 플레이어 사망
 	for _, player in ipairs(Players:GetPlayers()) do
 		local _, hum, hrp = getParts(player)
-		local s = sessions[player]
-		if s then
-			s.deathReason = "nuke"
-		end
-		if hrp then
-			hrp.Anchored = false
-			local away = (hrp.Position - NUKE_TARGET)
-			away = Vector3.new(away.X, 0, away.Z)
-			if away.Magnitude < 1 then
-				away = Vector3.new(1, 0, 0)
+		if hrp and inBunker(hrp.Position) then
+			remote:FireClient(player, "Toast", "벙커 덕분에 살았다!")
+		else
+			local s = sessions[player]
+			if s then
+				s.deathReason = "nuke"
 			end
-			hrp.AssemblyLinearVelocity = away.Unit * 150 + Vector3.new(0, 120, 0)
-		end
-		if hum then
-			hum.Health = 0
+			if hrp then
+				hrp.Anchored = false
+				local away = (hrp.Position - NUKE_TARGET)
+				away = Vector3.new(away.X, 0, away.Z)
+				if away.Magnitude < 1 then
+					away = Vector3.new(1, 0, 0)
+				end
+				hrp.AssemblyLinearVelocity = away.Unit * 150 + Vector3.new(0, 120, 0)
+			end
+			if hum then
+				hum.Health = 0
+			end
 		end
 	end
 	task.wait(2)
@@ -1887,7 +1932,7 @@ task.spawn(function()
 			local char = player.Character
 			local head = char and char:FindFirstChild("Head")
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if head and hum and hum.Health > 0 and head.Position.Y < floodLevel - 0.3 then
+			if head and hum and hum.Health > 0 and head.Position.Y < floodLevel - 0.3 and not inBunker(head.Position) then
 				underwater[player] = (underwater[player] or 0) + 0.25
 				if underwater[player] == 1 then
 					toast(player, "물에 잠겼다! 교실 뒤 사다리로 지붕에 올라가세요!")
