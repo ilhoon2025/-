@@ -1240,24 +1240,21 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -------------------------------------------------------------------
--- 1등급 상품권: 잔디(맵) 네 모서리에 하나씩
+-- 1등급 상품권: 맵 한쪽 구석에 딱 하나 (표시 글씨 없음)
 -------------------------------------------------------------------
 do
 	local grass = world:FindFirstChild("Grass")
 	local gp, gs = grass.Position, grass.Size
-	for _, sx in ipairs({ -1, 1 }) do
-		for _, sz in ipairs({ -1, 1 }) do
+	for _, sx in ipairs({ -1 }) do
+		for _, sz in ipairs({ 1 }) do
 			local pos = Vector3.new(gp.X + sx * (gs.X / 2 - 6), 2.5, gp.Z + sz * (gs.Z / 2 - 6))
 			local stand = part({ Size = Vector3.new(3, 1, 3), Position = Vector3.new(pos.X, 0.5, pos.Z), Color = Color3.fromRGB(240, 240, 240), Material = Enum.Material.Marble })
 			local card = part({ Name = "Voucher", Size = Vector3.new(3, 1.8, 0.15), Position = pos + Vector3.new(0, 0.6, 0), Color = Color3.fromRGB(255, 200, 40), Material = Enum.Material.Neon, CanCollide = false })
-			surfaceText(card, Enum.NormalId.Front, "1등급\n상품권", Color3.fromRGB(90, 50, 0), Enum.Font.GothamBlack)
-			surfaceText(card, Enum.NormalId.Back, "1등급\n상품권", Color3.fromRGB(90, 50, 0), Enum.Font.GothamBlack)
 			local glow = Instance.new("PointLight")
 			glow.Color = Color3.fromRGB(255, 210, 80)
 			glow.Range = 14
 			glow.Brightness = 2
 			glow.Parent = card
-			makeBillboard(card, "1등급 상품권", 2.4, Color3.fromRGB(255, 220, 90))
 			-- 빙글빙글 돌기
 			task.spawn(function()
 				local a = 0
