@@ -133,7 +133,8 @@ end)
 -------------------------------------------------------------------
 local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })
 text({ Parent = top, Text = "한국 수능 부정행위", Font = F.bold, TextSize = 18, Size = UDim2.new(0, 260, 1, 0), Position = UDim2.fromOffset(18, 0) })
-local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -440, 1, 0), Position = UDim2.new(0, 280, 0, 0) })
+local nukeBtn = button({ Parent = top, Text = "핵폭탄 발사", TextSize = 13, BackgroundColor3 = Color3.fromRGB(200, 30, 30), AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.fromOffset(110, 32), Position = UDim2.new(0, 200, 0.5, 0) })
+local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -480, 1, 0), Position = UDim2.new(0, 320, 0, 0) })
 local moneyLabel = text({ Parent = top, Text = "", Font = F.bold, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 130, 1, 0), Position = UDim2.new(1, -148, 0, 0) })
 
 -------------------------------------------------------------------
@@ -897,6 +898,10 @@ local function setExamMode(on)
 	updateStatus()
 end
 
+nukeBtn.MouseButton1Click:Connect(function()
+	remote:FireServer("Nuke")
+end)
+
 startBtn.MouseButton1Click:Connect(function()
 	local c = cheats[selected]
 	if c then
@@ -1359,6 +1364,22 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		if away then
 			toast("감독관 시야(빨간 빛)를 피해 문으로 나가세요. 돌아오면 자리 근처에서 버튼을 누르세요.")
 		end
+	elseif action == "NukeWarn" then
+		toast(data .. " 님이 핵폭탄을 발사했습니다! " .. extra .. "초 후 도착!")
+		local warn = text({ Parent = gui, ZIndex = 190, Text = "핵폭탄 접근 중", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 60, 60), TextStrokeTransparency = 0, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.6, 0.1), Position = UDim2.fromScale(0.5, 0.3) })
+		task.spawn(function()
+			for _ = 1, extra * 2 do
+				warn.Visible = not warn.Visible
+				task.wait(0.5)
+			end
+			warn:Destroy()
+		end)
+	elseif action == "NukeBoom" then
+		local flash = new("Frame", { Parent = gui, ZIndex = 195, BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1) })
+		TweenService:Create(flash, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 }):Play()
+		task.delay(2.6, function()
+			flash:Destroy()
+		end)
 	elseif action == "Toast" then
 		toast(data)
 	elseif action == "Inventory" then
@@ -1410,7 +1431,12 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.reason == "sniper" then
+		if data.reason == "nuke" then
+			mTitle.Text = "핵폭탄"
+			mGrade.Text = "전멸"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("누군가 핵폭탄을 쐈다. 시험장이 사라졌다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "sniper" then
 			mTitle.Text = "저격당함"
 			mGrade.Text = "실격"
 			mGrade.TextColor3 = C.danger

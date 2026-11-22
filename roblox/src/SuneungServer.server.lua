@@ -675,6 +675,7 @@ end
 
 -- reason: nil(정상 종료/시간 종료) | "caught" | "car"
 local endingPending = {} -- [player] = 엔딩 끝 폭발 대기
+local nukeRequest -- 아래 핵폭탄 부분에서 정의
 local function endSession(player, reason)
 	local s = sessions[player]
 	if not s or s.ended then
@@ -830,6 +831,12 @@ end)
 -------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
+	if action == "Nuke" then
+		if nukeRequest and player.Character then
+			nukeRequest(player)
+		end
+		return
+	end
 	if action == "Explode" then
 		-- 1등급 엔딩의 마지막: 캐릭터 폭발
 		if endingPending[player] then
@@ -1543,6 +1550,227 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 end)
+
+-------------------------------------------------------------------
+-- 탈 수 있는 차
+-- Workspace 에 이름이 "탈것" 인 모델을 넣으면 그 모델을 운전할 수 있음
+-- (없으면 교실 뒤 잔디에 기본 차가 생김)
+-- 앞뒤가 반대로 가면 모델 속성(Attribute)에 Reverse = true 추가
+-------------------------------------------------------------------
+local DRIVE_MAX = 90 -- 최고 속도
+local DRIVE_ACCEL = 45
+local DRIVE_TURN = 2.2
+local drivables = {}
+
+local function groundY(pos, ignore)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local list = { ignore, carFolder, sniperFolder }
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(list, p.Character)
+		end
+	end
+	params.FilterDescendantsInstances = list
+	local hit = workspace:Raycast(pos + Vector3.new(0, 40, 0), Vector3.new(0, -120, 0), params)
+	return hit and hit.Position.Y or 0
+end
+
+local function makeDrivable(model)
+	if not model.PrimaryPart then
+		model.PrimaryPart = model:FindFirstChildWhichIsA("BasePart", true)
+	end
+	if not model.PrimaryPart then
+		return
+	end
+	for _, p in ipairs(model:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Anchored = true
+		end
+	end
+	local pivot = model:GetPivot()
+	local size = model:GetExtentsSize()
+	local look = pivot.LookVector
+	local yaw0 = math.atan2(-look.X, -look.Z)
+	local rel = CFrame.Angles(0, yaw0, 0):Inverse() * (pivot - pivot.Position)
+	local seat = model:FindFirstChildWhichIsA("VehicleSeat", true)
+	if not seat then
+		seat = Instance.new("VehicleSeat")
+		seat.Name = "DriverSeat"
+		seat.Size = Vector3.new(2, 0.4, 2)
+		seat.Transparency = 1
+		seat.CanCollide = false
+		seat.CFrame = CFrame.new(pivot.Position + Vector3.new(0, size.Y / 2 + 0.2, 0)) * CFrame.Angles(0, yaw0, 0)
+		seat.Parent = model
+	end
+	seat.Anchored = true
+	seat.MaxSpeed = 0
+	local prompt2 = Instance.new("ProximityPrompt")
+	prompt2.ActionText = "타기"
+	prompt2.ObjectText = "차"
+	prompt2.HoldDuration = 0
+	prompt2.MaxActivationDistance = 14
+	prompt2.RequiresLineOfSight = false
+	prompt2.Parent = seat
+	prompt2.Triggered:Connect(function(player)
+		local _, hum = getParts(player)
+		if hum and not seat.Occupant and not sessions[player] then
+			seat:Sit(hum)
+		elseif sessions[player] and not sessions[player].away then
+			toast(player, "시험 중에는 자리에서 못 일어나요.")
+		end
+	end)
+	table.insert(drivables, {
+		model = model, seat = seat, speed = 0, yaw = yaw0, rel = rel,
+		pos = pivot.Position, offset = pivot.Position.Y - groundY(pivot.Position, model),
+		radius = math.max(size.X, size.Z) / 2 + 1,
+		dir = model:GetAttribute("Reverse") and -1 or 1,
+	})
+end
+
+local function buildDefaultCar()
+	local m = buildCar(Color3.fromRGB(255, 120, 0))
+	m.Name = "탈것"
+	m:PivotTo(CFrame.new(30, 0, ROOM_Z1 + 18))
+	m.Parent = world
+	return m
+end
+
+do
+	local found = false
+	for _, m in ipairs(workspace:GetChildren()) do
+		if m:IsA("Model") and m.Name == "탈것" then
+			makeDrivable(m)
+			found = true
+		end
+	end
+	if not found then
+		makeDrivable(buildDefaultCar())
+	end
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	for _, c in ipairs(drivables) do
+		local hum = c.seat.Occupant
+		local throttle = hum and c.seat.ThrottleFloat or 0
+		local steer = hum and c.seat.SteerFloat or 0
+		local target = throttle * DRIVE_MAX
+		if math.abs(target - c.speed) > 0.1 then
+			local acc = (throttle == 0) and DRIVE_ACCEL * 1.5 or DRIVE_ACCEL
+			c.speed = c.speed + math.clamp(target - c.speed, -acc * dt, acc * dt)
+		end
+		if math.abs(c.speed) > 0.5 then
+			c.yaw = c.yaw - steer * DRIVE_TURN * dt * math.sign(c.speed)
+			local fwd = Vector3.new(-math.sin(c.yaw), 0, -math.cos(c.yaw)) * c.dir
+			local nextPos = c.pos + fwd * c.speed * dt
+			local gy = groundY(nextPos, c.model)
+			c.pos = Vector3.new(nextPos.X, gy + c.offset, nextPos.Z)
+			c.model:PivotTo(CFrame.new(c.pos) * CFrame.Angles(0, c.yaw, 0) * c.rel)
+			-- 빠르게 달리면 다른 플레이어를 치어버림
+			if math.abs(c.speed) > 30 then
+				for _, player in ipairs(Players:GetPlayers()) do
+					local _, h, hrp = getParts(player)
+					if h and hrp and h ~= hum and h.Health > 0 and (hrp.Position - c.pos).Magnitude < c.radius then
+						local s = sessions[player]
+						if s then
+							s.deathReason = "car"
+						end
+						hrp.Anchored = false
+						hrp.AssemblyLinearVelocity = fwd * math.abs(c.speed) + Vector3.new(0, 50, 0)
+						h.Health = 0
+						logAll(player.DisplayName .. " 교통사고")
+					end
+				end
+			end
+		end
+	end
+end)
+
+-------------------------------------------------------------------
+-- 핵폭탄 (아무나 발사 가능, 60초에 한 번)
+-------------------------------------------------------------------
+local NUKE_COOLDOWN = 60
+local lastNuke = -math.huge
+local NUKE_TARGET = Vector3.new(0, 0, 20) -- 교실 한가운데
+
+local function launchNuke(byPlayer)
+	lastNuke = os.clock()
+	logAll(byPlayer.DisplayName .. " 핵폭탄 발사!")
+	remote:FireAllClients("NukeWarn", byPlayer.DisplayName, 5)
+	-- 하늘에서 떨어지는 미사일
+	local missile = part({ Size = Vector3.new(3, 3, 16), Color = Color3.fromRGB(230, 230, 230), Material = Enum.Material.Metal, CanCollide = false, CanQuery = false })
+	local tip = part({ Size = Vector3.new(3, 3, 3), Color = Color3.fromRGB(200, 30, 30), Shape = Enum.PartType.Ball, CanCollide = false, CanQuery = false })
+	local fire = Instance.new("Fire")
+	fire.Size = 12
+	fire.Heat = 20
+	fire.Parent = missile
+	local start = NUKE_TARGET + Vector3.new(150, 700, -150)
+	local t0 = os.clock()
+	while os.clock() - t0 < 5 do
+		local k = (os.clock() - t0) / 5
+		local p = start:Lerp(NUKE_TARGET, k * k)
+		local cf = CFrame.lookAt(p, NUKE_TARGET)
+		missile.CFrame = cf
+		tip.CFrame = cf * CFrame.new(0, 0, -8)
+		task.wait()
+	end
+	missile:Destroy()
+	tip:Destroy()
+
+	-- 폭발
+	remote:FireAllClients("NukeBoom")
+	local ball = part({ Size = Vector3.new(10, 10, 10), Position = NUKE_TARGET, Shape = Enum.PartType.Ball, Color = Color3.fromRGB(255, 230, 150), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
+	local light = Instance.new("PointLight")
+	light.Range = 60
+	light.Brightness = 10
+	light.Color = Color3.fromRGB(255, 180, 80)
+	light.Parent = ball
+	TweenService:Create(ball, TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(400, 400, 400), Color = Color3.fromRGB(255, 120, 30), Transparency = 0.4 }):Play()
+	-- 모든 플레이어 사망
+	for _, player in ipairs(Players:GetPlayers()) do
+		local _, hum, hrp = getParts(player)
+		local s = sessions[player]
+		if s then
+			s.deathReason = "nuke"
+		end
+		if hrp then
+			hrp.Anchored = false
+			local away = (hrp.Position - NUKE_TARGET)
+			away = Vector3.new(away.X, 0, away.Z)
+			if away.Magnitude < 1 then
+				away = Vector3.new(1, 0, 0)
+			end
+			hrp.AssemblyLinearVelocity = away.Unit * 150 + Vector3.new(0, 120, 0)
+		end
+		if hum then
+			hum.Health = 0
+		end
+	end
+	task.wait(2)
+	-- 버섯구름
+	local stem = part({ Size = Vector3.new(20, 1, 20), Position = NUKE_TARGET, Shape = Enum.PartType.Cylinder, Color = Color3.fromRGB(120, 110, 100), Material = Enum.Material.SmoothPlastic, CanCollide = false, CanQuery = false })
+	stem.CFrame = CFrame.new(NUKE_TARGET) * CFrame.Angles(0, 0, math.rad(90))
+	local cap = part({ Size = Vector3.new(30, 20, 30), Position = NUKE_TARGET + Vector3.new(0, 20, 0), Shape = Enum.PartType.Ball, Color = Color3.fromRGB(160, 140, 120), Material = Enum.Material.SmoothPlastic, CanCollide = false, CanQuery = false })
+	TweenService:Create(ball, TweenInfo.new(2), { Transparency = 1 }):Play()
+	TweenService:Create(stem, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(200, 40, 40), CFrame = CFrame.new(NUKE_TARGET + Vector3.new(0, 100, 0)) * CFrame.Angles(0, 0, math.rad(90)) }):Play()
+	TweenService:Create(cap, TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(220, 110, 220), Position = NUKE_TARGET + Vector3.new(0, 210, 0) }):Play()
+	task.wait(8)
+	TweenService:Create(stem, TweenInfo.new(3), { Transparency = 1 }):Play()
+	TweenService:Create(cap, TweenInfo.new(3), { Transparency = 1 }):Play()
+	task.wait(3)
+	ball:Destroy()
+	stem:Destroy()
+	cap:Destroy()
+end
+
+nukeRequest = function(player)
+	local left = NUKE_COOLDOWN - (os.clock() - lastNuke)
+	if left > 0 then
+		toast(player, "핵폭탄 재장전 중… " .. math.ceil(left) .. "초")
+		return
+	end
+	task.spawn(launchNuke, player)
+end
 
 -- 타이머
 task.spawn(function()
