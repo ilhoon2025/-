@@ -1088,6 +1088,112 @@ local function sceneUniversity()
 	task.wait(5.5)
 end
 
+-- 장면 1-2: 서울대 시험 (어려운 문제 5개)
+local SNU_QUESTIONS = {
+	{ q = "다음 중 소수가 아닌 것은?", a = { "2", "9", "11", "13" }, c = 2 },
+	{ q = "e^(iπ) + 1 = ?", a = { "-1", "1", "0", "π" }, c = 3 },
+	{ q = "'경국대전'을 완성해 반포한 왕은?", a = { "세종", "태종", "성종", "영조" }, c = 3 },
+	{ q = "빛의 속도는 대략 초속 몇 km?", a = { "3천 km", "3만 km", "30만 km", "300만 km" }, c = 3 },
+	{ q = "미분: d/dx (x³) = ?", a = { "x²", "3x²", "3x", "x³/3" }, c = 2 },
+}
+local function sceneSNUExam()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(235, 238, 245)
+	eText("서울대학교 입학 시험", 0.07, Color3.fromRGB(30, 40, 80), 0.1, F.bold, 160)
+	local sub = eText("합격했는데 시험을 또 본다고?", 0.035, C.muted, 0.18, F.mid, 160)
+	sub.TextTransparency = 0
+	local paperF = new("Frame", { Parent = endingLayer, ZIndex = 160, BackgroundColor3 = C.paper, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.6, 0.62), Position = UDim2.fromScale(0.5, 0.26) }, { corner(10), stroke() })
+	local qL = text({ Parent = paperF, ZIndex = 161, Text = "", Font = F.bold, TextScaled = true, Size = UDim2.fromScale(0.9, 0.14), Position = UDim2.fromScale(0.05, 0.05) })
+	local resultL = text({ Parent = paperF, ZIndex = 161, Text = "", Font = F.mid, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.9, 0.08), Position = UDim2.fromScale(0.05, 0.88) })
+	local btns = {}
+	for i = 1, 4 do
+		local b = button({ Parent = paperF, ZIndex = 161, Text = "", Font = F.mid, TextScaled = true, BackgroundColor3 = C.paper, TextColor3 = C.text, Size = UDim2.fromScale(0.9, 0.13), Position = UDim2.fromScale(0.05, 0.24 + (i - 1) * 0.16) }, false)
+		new("UIPadding", { Parent = b, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+		btns[i] = b
+	end
+	local score = 0
+	for n, item in ipairs(SNU_QUESTIONS) do
+		qL.Text = n .. ".  " .. item.q
+		for i, b in ipairs(btns) do
+			b.Text = Shared.NUM[i] .. "  " .. item.a[i]
+			b.BackgroundColor3 = C.paper
+		end
+		local chosen
+		local conns = {}
+		for i, b in ipairs(btns) do
+			conns[i] = b.MouseButton1Click:Connect(function()
+				chosen = chosen or i
+			end)
+		end
+		repeat
+			task.wait()
+		until chosen
+		for _, c in ipairs(conns) do
+			c:Disconnect()
+		end
+		local ok = chosen == item.c
+		if ok then
+			score = score + 1
+		end
+		btns[item.c].BackgroundColor3 = Color3.fromRGB(210, 240, 215)
+		if not ok then
+			btns[chosen].BackgroundColor3 = Color3.fromRGB(250, 215, 215)
+		end
+		resultL.TextColor3 = ok and C.ok or C.danger
+		resultL.Text = ok and "정답" or "오답"
+		task.wait(0.9)
+		resultL.Text = ""
+	end
+	paperF:Destroy()
+	sub:Destroy()
+	local r = eText("서울대 시험 " .. score .. " / " .. #SNU_QUESTIONS, 0.09, C.accent, 0.45, F.bold, 160)
+	fadeIn(r)
+	eText(score >= 4 and "역시 1등급. 교수님이 감탄했다." or "교수님: \"수능 진짜 혼자 본 거 맞아요?\"", 0.04, Color3.fromRGB(40, 45, 60), 0.56, F.mid, 160)
+	task.wait(3)
+end
+
+-- 마지막 장면: 폭발
+local function sceneExplosion()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.new(1, 1, 1)
+	endingLayer.BackgroundTransparency = 0
+	remote:FireServer("Explode")
+	-- 불꽃 원이 퍼져 나감
+	local fireColors = { Color3.fromRGB(255, 240, 150), Color3.fromRGB(255, 170, 40), Color3.fromRGB(240, 80, 20), Color3.fromRGB(120, 30, 10) }
+	for i, col in ipairs(fireColors) do
+		local ring = new("Frame", { Parent = endingLayer, ZIndex = 155 + (5 - i), BackgroundColor3 = col, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0, 0) })
+		new("UIAspectRatioConstraint", { Parent = ring, AspectRatio = 1 })
+		corner(1000).Parent = ring
+		TweenService:Create(ring, TweenInfo.new(0.5 + i * 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(1.2 + i * 0.4, 1.2 + i * 0.4) }):Play()
+	end
+	-- 파편
+	for _ = 1, 40 do
+		local a = math.random() * math.pi * 2
+		local d = 0.4 + math.random() * 0.4
+		local bit = new("Frame", { Parent = endingLayer, ZIndex = 170, BackgroundColor3 = fireColors[math.random(1, 3)], BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(math.random(8, 20), math.random(8, 20)), Rotation = math.random(0, 360) })
+		TweenService:Create(bit, TweenInfo.new(0.8 + math.random() * 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5 + math.cos(a) * d, 0.5 + math.sin(a) * d), Rotation = math.random(-720, 720), BackgroundTransparency = 1 }):Play()
+	end
+	local boom = eText("펑!!!", 0.25, Color3.fromRGB(255, 255, 255), 0.5, F.bold, 180)
+	boom.TextStrokeTransparency = 0
+	boom.TextStrokeColor3 = Color3.fromRGB(120, 20, 0)
+	-- 화면 흔들기
+	local t0 = os.clock()
+	while os.clock() - t0 < 1.6 do
+		local k = 1 - (os.clock() - t0) / 1.6
+		endingLayer.Position = UDim2.fromOffset(math.random(-12, 12) * k, math.random(-12, 12) * k)
+		task.wait()
+	end
+	endingLayer.Position = UDim2.fromOffset(0, 0)
+	task.wait(0.4)
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.new(0, 0, 0)
+	local dead = eText("사망", 0.12, Color3.fromRGB(200, 30, 30), 0.45, F.bold, 160)
+	fadeIn(dead, 1)
+	local why = eText("인생 최고의 순간에 폭발했다.", 0.04, Color3.fromRGB(180, 180, 180), 0.57, F.mid, 160)
+	fadeIn(why, 1.5)
+	task.wait(3.5)
+end
+
 -- 장면 2: 인줄 알았는데.......
 local function sceneTwist()
 	clearEnding()
@@ -1168,7 +1274,7 @@ local function sceneInterview()
 	local r2 = eText(desc, 0.04, Color3.fromRGB(40, 45, 60), 0.82, F.mid, 160)
 	fadeIn(r1)
 	fadeIn(r2, 1)
-	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "처음으로", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.92) })
+	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "확인", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.92) })
 	new("UIPadding", { Parent = back, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
 	local done = false
 	back.MouseButton1Click:Connect(function()
@@ -1183,8 +1289,10 @@ local function playEnding()
 	root.Visible = false
 	endingLayer.Visible = true
 	sceneUniversity()
+	sceneSNUExam()
 	sceneTwist()
 	sceneInterview()
+	sceneExplosion()
 	clearEnding()
 	endingLayer.Visible = false
 	root.Visible = true

@@ -674,6 +674,7 @@ local function freePlayer(player, where)
 end
 
 -- reason: nil(정상 종료/시간 종료) | "caught" | "car"
+local endingPending = {} -- [player] = 엔딩 끝 폭발 대기
 local function endSession(player, reason)
 	local s = sessions[player]
 	if not s or s.ended then
@@ -692,6 +693,9 @@ local function endSession(player, reason)
 		d.occupant = nil
 	end
 	sessions[player] = nil
+	if reason == nil and Shared.grade(s.score) == 1 then
+		endingPending[player] = true -- 1등급 엔딩 마지막에 폭발
+	end
 	if reason == "caught" then
 		player:LoadCharacter()
 	elseif reason == nil then
@@ -826,6 +830,27 @@ end)
 -------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
+	if action == "Explode" then
+		-- 1등급 엔딩의 마지막: 캐릭터 폭발
+		if endingPending[player] then
+			endingPending[player] = nil
+			local _, hum, hrp = getParts(player)
+			if hrp and hum then
+				hrp.Anchored = false
+				local e = Instance.new("Explosion")
+				e.Position = hrp.Position
+				e.BlastRadius = 8
+				e.BlastPressure = 200000
+				e.DestroyJointRadiusPercent = 0 -- 다른 사람은 안 죽게
+				e.ExplosionType = Enum.ExplosionType.NoCraters
+				e.Parent = workspace
+				hrp.AssemblyLinearVelocity = Vector3.new(math.random(-30, 30), 90, math.random(-30, 30))
+				hum.Health = 0
+				logAll(player.DisplayName .. " 폭발")
+			end
+		end
+		return
+	end
 	if action == "Play" then
 		-- 처음 화면에서 플레이하기를 눌러야 캐릭터가 생김
 		if not player.Character then
