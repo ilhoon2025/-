@@ -916,13 +916,20 @@ local function renderBag(inv)
 		end
 	end
 	local any = false
-	for i, it in ipairs(Shared.SHOP) do
+	local all = {}
+	for _, it in ipairs(Shared.SPECIAL) do
+		table.insert(all, it)
+	end
+	for _, it in ipairs(Shared.SHOP) do
+		table.insert(all, it)
+	end
+	for i, it in ipairs(all) do
 		local n = inv[it.id]
 		if n and n > 0 then
 			any = true
 			local row = new("Frame", { Parent = bagList, LayoutOrder = i, BackgroundColor3 = C.sub, Size = UDim2.new(1, -4, 0, 32) }, { corner(6) })
 			text({ Parent = row, Text = it.name .. "  x" .. n, Font = F.mid, TextSize = 13, Size = UDim2.new(1, -70, 1, 0), Position = UDim2.fromOffset(10, 0) })
-			local eat = button({ Parent = row, Text = "먹기", TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(52, 24), Position = UDim2.new(1, -4, 0.5, 0) })
+			local eat = button({ Parent = row, Text = it.special and "사용" or "먹기", BackgroundColor3 = it.special and Color3.fromRGB(200, 140, 0) or nil, TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(52, 24), Position = UDim2.new(1, -4, 0.5, 0) })
 			eat.MouseButton1Click:Connect(function()
 				remote:FireServer("Eat", it.id)
 			end)

@@ -86,8 +86,18 @@ function Shared.upgrade(id)
 	end
 end
 
+-- 맵 구석에 숨겨진 특별 아이템 (매점에서는 안 팜)
+Shared.SPECIAL = {
+	{ id = "voucher", name = "1등급 상품권", desc = "시험 중에 쓰면 바로 1등급", special = true },
+}
+
 function Shared.shopItem(id)
 	for _, it in ipairs(Shared.SHOP) do
+		if it.id == id then
+			return it
+		end
+	end
+	for _, it in ipairs(Shared.SPECIAL) do
 		if it.id == id then
 			return it
 		end
