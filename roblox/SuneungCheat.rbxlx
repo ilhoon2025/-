@@ -438,7 +438,7 @@ box(ROOM_X, -0.2, -ROAD_LEN / 2, ROAD_X0, 0.3, ROAD_LEN / 2, { Name = "Sidewalk"
 box(ROAD_X0, -0.2, -ROAD_LEN / 2, ROAD_X1, 0.05, ROAD_LEN / 2, { Name = "Road", Color = Color3.fromRGB(55, 57, 62), Material = Enum.Material.Asphalt })
 box(ROAD_X1, -0.2, -ROAD_LEN / 2, ROAD_X1 + 8, 0.3, ROAD_LEN / 2, { Name = "Sidewalk2", Color = Color3.fromRGB(190, 190, 185), Material = Enum.Material.Concrete })
 -- 중앙선
-box(95.7, 0.05, -ROAD_LEN / 2, 76.3, 0.1, ROAD_LEN / 2, { Color = Color3.fromRGB(240, 190, 40), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+box(95.7, 0.05, -ROAD_LEN / 2, 96.3, 0.1, ROAD_LEN / 2, { Color = Color3.fromRGB(240, 190, 40), Material = Enum.Material.SmoothPlastic, CanCollide = false })
 -- 차선
 for z = -ROAD_LEN / 2, ROAD_LEN / 2 - 8, 14 do
 	for _, x in ipairs({ 89, 103 }) do
