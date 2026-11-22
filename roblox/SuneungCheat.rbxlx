@@ -4562,7 +4562,7 @@ local function playCredits()
 	task.wait(1.6)
 
 	local function big(str, size, color, y, font)
-		return text({ Parent = cg, ZIndex = 5, Text = str, Font = font or F.bold, TextScaled = true, TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, y) })
+		return text({ Parent = cg, ZIndex = 5, Text = str, Font = Enum.Font.GothamBlack, TextStrokeTransparency = 0.6, TextScaled = true, TextColor3 = color, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, y) })
 	end
 	-- 제목
 	local title = big("한국 수능 부정행위", 0.14, Color3.new(1, 1, 1), 0.46)
@@ -4612,7 +4612,7 @@ local function playCredits()
 	}
 	local roll = new("Frame", { Parent = cg, BackgroundTransparency = 1, ZIndex = 5, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.7, 0.06 * #lines), Position = UDim2.fromScale(0.5, 1) })
 	for i, l in ipairs(lines) do
-		text({ Parent = roll, ZIndex = 6, Text = l[1], Font = l[2] and F.bold or F.mid, TextScaled = true, TextColor3 = l[2] and Color3.fromRGB(255, 215, 120) or Color3.fromRGB(230, 230, 230), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1 / #lines, -10), Position = UDim2.fromScale(0, (i - 1) / #lines) })
+		text({ Parent = roll, ZIndex = 6, Text = l[1], Font = l[2] and Enum.Font.GothamBlack or F.bold, TextScaled = true, TextColor3 = l[2] and Color3.fromRGB(255, 215, 120) or Color3.fromRGB(230, 230, 230), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1 / #lines, -10), Position = UDim2.fromScale(0, (i - 1) / #lines) })
 	end
 	local dur = 22
 	TweenService:Create(roll, TweenInfo.new(dur, Enum.EasingStyle.Linear), { Position = UDim2.fromScale(0.5, -0.06 * #lines) }):Play()
