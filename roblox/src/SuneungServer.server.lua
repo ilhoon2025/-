@@ -172,7 +172,7 @@ for _, x in ipairs({ -45, -15, 15, 45 }) do
 end
 
 -- 칠판
-local board = part({ Name = "Blackboard", Size = Vector3.new(72, 9, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
+local board = part({ Name = "Blackboard", Size = Vector3.new(72, 8, 0.4), Position = Vector3.new(0, 11.4, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
 surfaceText(board, Enum.NormalId.Back, "2027학년도 대학수학능력시험\n부정행위 적발 시 가루 처리", Color3.fromRGB(233, 245, 238), Enum.Font.GothamBlack)
 
 -- 스폰 (교실 뒤쪽)
@@ -292,7 +292,7 @@ box(SX0, 3, SDOOR1 + 3, SX0 + 1.1, 8, SZ1 - 4, GLASS)
 box(SX1 - 1, 0, SZ0, SX1, 12, SZ1, { Color = storeWall })
 box(SX0, 0, SZ0, SX1, 12, SZ0 + 1, { Color = storeWall })
 box(SX0, 0, SZ1 - 1, SX1, 12, SZ1, { Color = storeWall })
-local sign = box(SX0 - 0.6, 12.5, SZ0 + 8, SX0 - 0.2, 17, SZ1 - 8, { Color = Color3.fromRGB(200, 40, 40) })
+local sign = box(SX0 - 0.6, 13, SZ0 + 8, SX0 - 0.2, 22, SZ1 - 8, { Color = Color3.fromRGB(200, 40, 40) })
 surfaceText(sign, Enum.NormalId.Left, "매점", Color3.new(1, 1, 1), Enum.Font.GothamBlack)
 do
 	local lamp = part({ Size = Vector3.new(16, 0.3, 2), Position = Vector3.new((SX0 + SX1) / 2, 11.8, 40), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
@@ -345,10 +345,10 @@ box(SX0, 3, PDOOR1 + 3, SX0 + 1.1, 8, PZ1 - 4, { Color = Color3.fromRGB(60, 40, 
 box(SX1 - 1, 0, PZ0, SX1, 12, PZ1, { Color = proWall })
 box(SX0, 0, PZ0, SX1, 12, PZ0 + 1, { Color = proWall })
 box(SX0, 0, PZ1 - 1, SX1, 12, PZ1, { Color = proWall })
-local proSign = box(SX0 - 0.6, 12.5, PZ0 + 5, SX0 - 0.2, 17, PZ1 - 5, { Color = Color3.fromRGB(20, 10, 30) })
+local proSign = box(SX0 - 0.6, 13, PZ0 + 5, SX0 - 0.2, 22, PZ1 - 5, { Color = Color3.fromRGB(20, 10, 30) })
 surfaceText(proSign, Enum.NormalId.Left, "부정행위 전문점", Color3.fromRGB(190, 120, 255), Enum.Font.GothamBlack)
 do
-	local neon = box(SX0 - 0.7, 12.3, PZ0 + 5, SX0 - 0.5, 12.5, PZ1 - 5, { Color = Color3.fromRGB(170, 80, 255), Material = Enum.Material.Neon })
+	local neon = box(SX0 - 0.7, 22, PZ0 + 5, SX0 - 0.5, 22.4, PZ1 - 5, { Color = Color3.fromRGB(170, 80, 255), Material = Enum.Material.Neon })
 	local l = Instance.new("PointLight")
 	l.Color = Color3.fromRGB(170, 80, 255)
 	l.Range = 20
@@ -404,10 +404,10 @@ box(SX0, 3, UDOOR1 + 3, SX0 + 1.1, 8, UZ1 - 4, { Color = Color3.fromRGB(80, 170,
 box(SX1 - 1, 0, UZ0, SX1, 12, UZ1, { Color = upWall })
 box(SX0, 0, UZ0, SX1, 12, UZ0 + 1, { Color = upWall })
 box(SX0, 0, UZ1 - 1, SX1, 12, UZ1, { Color = upWall })
-local upSign = box(SX0 - 0.6, 12.5, UZ0 + 5, SX0 - 0.2, 17, UZ1 - 5, { Color = Color3.fromRGB(10, 25, 35) })
+local upSign = box(SX0 - 0.6, 13, UZ0 + 5, SX0 - 0.2, 22, UZ1 - 5, { Color = Color3.fromRGB(10, 25, 35) })
 surfaceText(upSign, Enum.NormalId.Left, "업그레이드 전문점", Color3.fromRGB(90, 230, 255), Enum.Font.GothamBlack)
 do
-	local neon = box(SX0 - 0.7, 12.3, UZ0 + 5, SX0 - 0.5, 12.5, UZ1 - 5, { Color = Color3.fromRGB(60, 220, 255), Material = Enum.Material.Neon })
+	local neon = box(SX0 - 0.7, 22, UZ0 + 5, SX0 - 0.5, 22.4, UZ1 - 5, { Color = Color3.fromRGB(60, 220, 255), Material = Enum.Material.Neon })
 	local l = Instance.new("PointLight")
 	l.Color = Color3.fromRGB(60, 220, 255)
 	l.Range = 20
