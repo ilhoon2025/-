@@ -100,6 +100,35 @@ camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 fit()
 
 -------------------------------------------------------------------
+-- 처음 화면: 플레이하기를 눌러야 입장
+-------------------------------------------------------------------
+root.Visible = false
+local title = new("Frame", { Parent = gui, BackgroundColor3 = Color3.fromRGB(15, 20, 35), BackgroundTransparency = 0.15, Size = UDim2.fromScale(1, 1), ZIndex = 200 })
+text({ Parent = title, ZIndex = 201, Text = "한국 수능 부정행위", Font = F.bold, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.12), Position = UDim2.fromScale(0.5, 0.34) })
+text({ Parent = title, ZIndex = 201, Text = "감독관 몰래 부정행위로 1등급을 노려라. 들키면 가루가 된다.", TextScaled = true, TextColor3 = Color3.fromRGB(190, 200, 220), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.6, 0.035), Position = UDim2.fromScale(0.5, 0.44) })
+local playBtn = button({ Parent = title, ZIndex = 201, Text = "플레이하기", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.22, 0.09), Position = UDim2.fromScale(0.5, 0.6) })
+new("UIPadding", { Parent = playBtn, PaddingTop = UDim.new(0.22, 0), PaddingBottom = UDim.new(0.22, 0) })
+new("UISizeConstraint", { Parent = playBtn, MinSize = Vector2.new(180, 50), MaxSize = Vector2.new(360, 90) })
+
+-- 처음 화면 동안은 학교 전경을 천천히 돌며 보여줌
+camera.CameraType = Enum.CameraType.Scriptable
+local spin = 0
+local titleConn = RunService.RenderStepped:Connect(function(dt)
+	spin = spin + dt * 0.05
+	local center = Vector3.new(40, 0, 20)
+	local eye = center + Vector3.new(math.cos(spin) * 170, 75, math.sin(spin) * 170)
+	camera.CFrame = CFrame.lookAt(eye, center)
+end)
+
+playBtn.MouseButton1Click:Connect(function()
+	titleConn:Disconnect()
+	camera.CameraType = Enum.CameraType.Custom
+	title:Destroy()
+	root.Visible = true
+	remote:FireServer("Play")
+end)
+
+-------------------------------------------------------------------
 -- 상단 바
 -------------------------------------------------------------------
 local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })

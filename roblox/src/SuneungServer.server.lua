@@ -8,6 +8,9 @@ local Lighting = game:GetService("Lighting")
 
 local Shared = require(ReplicatedStorage:WaitForChild("SuneungShared"))
 
+-- 처음엔 캐릭터를 만들지 않음 (플레이하기 버튼을 눌러야 입장)
+Players.CharacterAutoLoads = false
+
 local remote = Instance.new("RemoteEvent")
 remote.Name = "SuneungEvent"
 remote.Parent = ReplicatedStorage
@@ -779,6 +782,12 @@ Players.PlayerAdded:Connect(function(player)
 			if s and not s.ended then
 				endSession(player, s.deathReason or "car")
 			end
+			-- 자동 부활이 꺼져 있으므로 직접 다시 살림
+			task.delay(4, function()
+				if player.Parent and player.Character == char then
+					player:LoadCharacter()
+				end
+			end)
 		end)
 	end)
 end)
@@ -817,6 +826,16 @@ end)
 -------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
+	if action == "Play" then
+		-- 처음 화면에서 플레이하기를 눌러야 캐릭터가 생김
+		if not player.Character then
+			player:LoadCharacter()
+		end
+		return
+	end
+	if not player.Character then
+		return
+	end
 	if action == "Start" then
 		if s or type(arg) ~= "string" then
 			return
@@ -1204,7 +1223,8 @@ end)
 -- 교실 지붕, 가게 지붕 3곳, 도로 양옆 감시탑에 배치
 -------------------------------------------------------------------
 local SNIPER_COUNT = 100
-local AIM_TIME = 1.4 -- 조준 후 발사까지
+local AIM_TIME = 3 -- 레이저가 플레이어에 닿은 채로 이만큼 지나면 발사
+local TRACK_SPEED = 7 -- 조준점이 플레이어를 따라가는 속도 (느림)
 local sniperFolder = Instance.new("Folder")
 sniperFolder.Name = "Snipers"
 sniperFolder.Parent = world
@@ -1291,7 +1311,7 @@ for i, pos in ipairs(sniperSpots) do
 	local m, laser, dot = buildSniper(pos)
 	snipers[i] = {
 		model = m, laser = laser, dot = dot, pos = pos,
-		phase = math.random() * 100, sx = 0.25 + math.random() * 0.35, sz = 0.2 + math.random() * 0.3,
+		phase = math.random() * 100, sx = 0.06 + math.random() * 0.1, sz = 0.05 + math.random() * 0.08, aimPos = nil,
 		lock = nil, lockT = 0, lockLost = 0, cooldown = math.random() * 3,
 	}
 end
@@ -1370,21 +1390,29 @@ RunService.Heartbeat:Connect(function(dt)
 			if not hrp then
 				sn.lock = nil
 			else
-				local from, hit = aim(sn, hrp.Position, true)
-				local visible = hit and hit.Instance and sn.lock.Character and hit.Instance:IsDescendantOf(sn.lock.Character)
-				sn.laser.Transparency = (math.floor(now * 12) % 2 == 0) and 0 or 0.5
-				if not visible then
-					sn.lockLost = sn.lockLost + dt
-					if sn.lockLost > 0.6 then
-						sn.lock = nil
-						sn.cooldown = 2
-					end
-				else
+				-- 조준점이 플레이어를 천천히 따라감
+				local goal = hrp.Position
+				local diff = goal - sn.aimPos
+				if diff.Magnitude > 0.01 then
+					sn.aimPos = sn.aimPos + diff.Unit * math.min(diff.Magnitude, TRACK_SPEED * dt)
+				end
+				local from, hit = aim(sn, sn.aimPos, true)
+				local onTarget = hit and hit.Instance and sn.lock.Character and hit.Instance:IsDescendantOf(sn.lock.Character)
+				sn.laser.Transparency = (math.floor(now * 4) % 2 == 0) and 0 or 0.5
+				if onTarget then
 					sn.lockLost = 0
 					sn.lockT = sn.lockT + dt
 					if sn.lockT >= AIM_TIME then
 						shoot(sn.lock, from, hrp.Position)
 						targets[sn.lock] = nil
+						sn.lock = nil
+						sn.cooldown = 6
+					end
+				else
+					sn.lockT = math.max(0, sn.lockT - dt * 0.5)
+					sn.lockLost = sn.lockLost + dt
+					-- 숨거나 멀리 도망가면 놓침
+					if sn.lockLost > 2.5 or diff.Magnitude > 35 then
 						sn.lock = nil
 						sn.cooldown = 3
 					end
@@ -1408,6 +1436,7 @@ RunService.Heartbeat:Connect(function(dt)
 						sn.lock = player
 						sn.lockT = 0
 						sn.lockLost = 0
+						sn.aimPos = dotPos
 						if not warned[player] or now - warned[player] > 2 then
 							warned[player] = now
 							remote:FireClient(player, "Toast", "저격수가 조준 중! 건물이나 차 뒤로 숨으세요!")
