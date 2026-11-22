@@ -265,6 +265,41 @@ local function buildCar(color)
 	return m
 end
 
+-- 뉴비 모양 차: 파란 몸통, 노란 머리(운전석)와 팔(옆 날개), 초록 바퀴
+local function buildNoobCar()
+	local m = Instance.new("Model")
+	m.Name = "NoobCar"
+	local YELLOW = Color3.fromRGB(245, 205, 48)
+	local BLUE = Color3.fromRGB(13, 105, 172)
+	local GREEN = Color3.fromRGB(75, 151, 75)
+	local body = part({ Parent = m, Name = "Body", Size = Vector3.new(6, 2.4, 11), CFrame = CFrame.new(0, 2, 0), Color = BLUE, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+	-- 머리 = 운전석 (웃는 얼굴이 앞을 봄)
+	local head = part({ Parent = m, Name = "Head", Size = Vector3.new(4, 2, 2), CFrame = CFrame.new(0, 4.6, 0.5), Color = YELLOW, CanCollide = false })
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = head
+	local face = Instance.new("Decal")
+	face.Face = Enum.NormalId.Front
+	face.Texture = "rbxasset://textures/face.png"
+	face.Parent = head
+	-- 팔 = 옆 날개
+	part({ Parent = m, Size = Vector3.new(1.4, 1.4, 7), CFrame = CFrame.new(-3.7, 2.4, -0.5), Color = YELLOW, CanCollide = false })
+	part({ Parent = m, Size = Vector3.new(1.4, 1.4, 7), CFrame = CFrame.new(3.7, 2.4, -0.5), Color = YELLOW, CanCollide = false })
+	-- 다리 = 초록 바퀴
+	for _, x in ipairs({ -3.2, 3.2 }) do
+		for _, z in ipairs({ -3.6, 3.6 }) do
+			part({ Parent = m, Size = Vector3.new(1, 2.2, 2.2), CFrame = CFrame.new(x, 1.1, z), Color = GREEN, Shape = Enum.PartType.Cylinder, CanCollide = false })
+		end
+	end
+	-- 헤드라이트
+	for _, x in ipairs({ -2, 2 }) do
+		part({ Parent = m, Size = Vector3.new(1.2, 0.6, 0.2), CFrame = CFrame.new(x, 2.4, -5.55), Color = Color3.fromRGB(255, 250, 220), Material = Enum.Material.Neon, CanCollide = false })
+	end
+	m.PrimaryPart = body
+	return m
+end
+
 local function spawnCar(lane)
 	local m = buildCar(CAR_COLORS[math.random(1, #CAR_COLORS)])
 	local z = -lane.dir * ROAD_LEN / 2
@@ -1683,7 +1718,7 @@ do
 			local spot = lotSpot(i)
 			m:PivotTo(CFrame.new(spot.X, pv.Y - groundY(pv.Position, m), spot.Z) * CFrame.Angles(0, yaw, 0) * rel)
 		else
-			m = buildCar(CAR_COLORS[(i - 1) % #CAR_COLORS + 1])
+			m = buildNoobCar()
 			m.Name = "탈것"
 			m:PivotTo(lotSpot(i))
 			m.Parent = world
