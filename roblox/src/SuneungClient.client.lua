@@ -1004,6 +1004,186 @@ local function showDomain(who)
 	end)
 end
 
+-------------------------------------------------------------------
+-- 1등급 엔딩: 서울대 합격 → "인줄 알았는데......." → 회사 면접
+-------------------------------------------------------------------
+local INTERVIEW = {
+	{ q = "자기소개 해보세요.", a = {
+		{ "열정 하나는 자신 있습니다!", 1 },
+		{ "수능 1등급 받았습니다.", 1 },
+		{ "……(긴장해서 아무 말도 못 함)", 0 },
+	} },
+	{ q = "수능 1등급의 비결은 무엇인가요?", a = {
+		{ "꾸준한 노력입니다.", 1 },
+		{ "AI 안경이요.", "confess" },
+		{ "운이 좋았습니다.", 0 },
+	} },
+	{ q = "우리 회사에 지원한 이유는?", a = {
+		{ "세상을 바꾸는 기술을 만들고 싶어서요.", 1 },
+		{ "매점보다 월급이 많을 것 같아서요.", 0 },
+		{ "엄마가 가래요.", 0 },
+	} },
+	{ q = "마지막으로 하고 싶은 말은?", a = {
+		{ "뽑아주시면 열심히 하겠습니다!", 1 },
+		{ "저 사실 저격수 100명도 피했습니다.", 0 },
+		{ "점심 메뉴가 뭔가요?", 0 },
+	} },
+}
+
+local endingLayer = new("Frame", { Parent = gui, BackgroundColor3 = Color3.new(0, 0, 0), Size = UDim2.fromScale(1, 1), ZIndex = 150, Visible = false })
+
+local function clearEnding()
+	for _, ch in ipairs(endingLayer:GetChildren()) do
+		ch:Destroy()
+	end
+end
+local function eText(str, size, color, posY, font, zi)
+	return text({ Parent = endingLayer, ZIndex = zi or 160, Text = str, Font = font or F.bold, TextScaled = true, TextColor3 = color or Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.8, size), Position = UDim2.fromScale(0.5, posY) })
+end
+local function eBox(color, size, pos, zi, r)
+	local f = new("Frame", { Parent = endingLayer, BackgroundColor3 = color, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Size = size, Position = pos, ZIndex = zi or 152 })
+	if r then
+		corner(r).Parent = f
+	end
+	return f
+end
+local function fadeIn(o, t)
+	if o:IsA("TextLabel") or o:IsA("TextButton") then
+		o.TextTransparency = 1
+		TweenService:Create(o, TweenInfo.new(t or 0.6), { TextTransparency = 0 }):Play()
+	end
+end
+
+-- 장면 1: 서울대 합격
+local function sceneUniversity()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(140, 200, 245)
+	-- 잔디와 정문 (단순한 도형으로 그린 학교 정문)
+	eBox(Color3.fromRGB(110, 170, 90), UDim2.fromScale(1, 0.25), UDim2.fromScale(0.5, 1), 151)
+	eBox(Color3.fromRGB(235, 235, 230), UDim2.fromScale(0.05, 0.42), UDim2.fromScale(0.33, 0.78), 152)
+	eBox(Color3.fromRGB(235, 235, 230), UDim2.fromScale(0.05, 0.42), UDim2.fromScale(0.67, 0.78), 152)
+	local beam = eBox(Color3.fromRGB(70, 90, 140), UDim2.fromScale(0.42, 0.07), UDim2.fromScale(0.5, 0.42), 153, 6)
+	text({ Parent = beam, ZIndex = 154, Text = "서울대학교", Font = F.bold, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 0.8), Position = UDim2.fromScale(0, 0.1) })
+	local t1 = eText("합격을 축하합니다!", 0.1, Color3.fromRGB(30, 40, 80), 0.16, F.bold, 160)
+	local t2 = eText("수능 1등급. 부모님이 우신다. 동네에 현수막이 걸렸다.", 0.04, Color3.fromRGB(40, 50, 90), 0.27, F.mid, 160)
+	fadeIn(t1)
+	fadeIn(t2, 1)
+	-- 꽃가루
+	local colors = { Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 210, 60), Color3.fromRGB(90, 200, 255), Color3.fromRGB(120, 230, 120), Color3.fromRGB(230, 120, 255) }
+	for _ = 1, 70 do
+		local x = math.random()
+		local c = new("Frame", { Parent = endingLayer, BackgroundColor3 = colors[math.random(1, #colors)], BorderSizePixel = 0, Size = UDim2.fromOffset(math.random(6, 12), math.random(10, 18)), Position = UDim2.new(x, 0, -0.05, 0), Rotation = math.random(0, 360), ZIndex = 170 })
+		TweenService:Create(c, TweenInfo.new(2.5 + math.random() * 2.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, math.random() * 1.5), {
+			Position = UDim2.new(x + (math.random() - 0.5) * 0.2, 0, 1.05, 0),
+			Rotation = math.random(-720, 720),
+		}):Play()
+	end
+	task.wait(5.5)
+end
+
+-- 장면 2: 인줄 알았는데.......
+local function sceneTwist()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.new(0, 0, 0)
+	local line = "인줄 알았는데......."
+	local label = eText("", 0.09, Color3.new(1, 1, 1), 0.5, F.bold, 160)
+	local chars = {}
+	for _, c in utf8.codes(line) do
+		table.insert(chars, utf8.char(c))
+	end
+	for i = 1, #chars do
+		label.Text = table.concat(chars, "", 1, i)
+		task.wait(i <= 6 and 0.18 or 0.32)
+	end
+	task.wait(1.5)
+end
+
+-- 장면 3: 회사 면접
+local function sceneInterview()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(225, 228, 235)
+	eText("삼성 회사 면접장", 0.06, Color3.fromRGB(30, 40, 80), 0.07, F.bold, 160)
+	-- 벽, 책상, 면접관 3명 (블록 캐릭터)
+	eBox(Color3.fromRGB(200, 205, 215), UDim2.fromScale(1, 0.45), UDim2.fromScale(0.5, 0.6), 151)
+	local suit = { Color3.fromRGB(40, 45, 60), Color3.fromRGB(30, 30, 35), Color3.fromRGB(55, 60, 80) }
+	for i, x in ipairs({ 0.3, 0.5, 0.7 }) do
+		eBox(suit[i], UDim2.fromScale(0.1, 0.14), UDim2.fromScale(x, 0.52), 152, 10)
+		local head = eBox(Color3.fromRGB(240, 205, 175), UDim2.fromScale(0.06, 0.1), UDim2.fromScale(x, 0.39), 153, 40)
+		new("UIAspectRatioConstraint", { Parent = head, AspectRatio = 1 })
+		local eyes = text({ Parent = head, ZIndex = 154, Text = "-  -", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(30, 30, 30), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 0.4), Position = UDim2.fromScale(0, 0.3) })
+		eyes.TextTransparency = 0
+	end
+	eBox(Color3.fromRGB(120, 85, 55), UDim2.fromScale(0.62, 0.08), UDim2.fromScale(0.5, 0.6), 155, 6)
+
+	local qPanel = new("Frame", { Parent = endingLayer, ZIndex = 160, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.7, 0.34), Position = UDim2.fromScale(0.5, 0.63) }, { corner(12), stroke() })
+	local qLabel2 = text({ Parent = qPanel, ZIndex = 161, Text = "", Font = F.bold, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.92, 0.2), Position = UDim2.fromScale(0.04, 0.05) })
+	local btns = {}
+	for i = 1, 3 do
+		local b = button({ Parent = qPanel, ZIndex = 161, Text = "", Font = F.mid, TextScaled = true, BackgroundColor3 = C.sub, TextColor3 = C.text, Size = UDim2.fromScale(0.9, 0.19), Position = UDim2.fromScale(0.05, 0.3 + (i - 1) * 0.23) }, false)
+		new("UIPadding", { Parent = b, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+		btns[i] = b
+	end
+
+	local score, confessed = 0, false
+	for _, item in ipairs(INTERVIEW) do
+		qLabel2.Text = "면접관: \"" .. item.q .. "\""
+		local chosen = nil
+		local conns = {}
+		for i, b in ipairs(btns) do
+			b.Text = item.a[i][1]
+			conns[i] = b.MouseButton1Click:Connect(function()
+				chosen = item.a[i][2]
+			end)
+		end
+		repeat
+			task.wait()
+		until chosen ~= nil
+		for _, c in ipairs(conns) do
+			c:Disconnect()
+		end
+		if chosen == "confess" then
+			confessed = true
+			break
+		end
+		score = score + chosen
+	end
+	qPanel:Destroy()
+
+	local title2, desc
+	if confessed then
+		title2, desc = "불합격", "면접관: \"부정행위 자백 감사합니다.\" 서울대 합격도 취소되었다."
+	elseif score >= 3 then
+		title2, desc = "최종 합격!", "축하합니다. 내일부터 출근하세요."
+	else
+		title2, desc = "불합격", "면접관: \"다음 기회에…\" 내년에 다시 도전하자."
+	end
+	local r1 = eText(title2, 0.1, confessed and C.danger or (score >= 3 and C.ok or C.danger), 0.72, F.bold, 160)
+	local r2 = eText(desc, 0.04, Color3.fromRGB(40, 45, 60), 0.82, F.mid, 160)
+	fadeIn(r1)
+	fadeIn(r2, 1)
+	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "처음으로", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.92) })
+	new("UIPadding", { Parent = back, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+	local done = false
+	back.MouseButton1Click:Connect(function()
+		done = true
+	end)
+	repeat
+		task.wait()
+	until done
+end
+
+local function playEnding()
+	root.Visible = false
+	endingLayer.Visible = true
+	sceneUniversity()
+	sceneTwist()
+	sceneInterview()
+	clearEnding()
+	endingLayer.Visible = false
+	root.Visible = true
+	setExamMode(false)
+end
+
 remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 	if action == "Question" then
 		if not inExam then
@@ -1135,6 +1315,11 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 			mGrade.Text = data.grade .. "등급"
 			mGrade.TextColor3 = C.accent
 			mDesc.Text = string.format("%d문제 중 %d개 정답", Shared.TOTAL_Q, data.score)
+			if data.grade == 1 then
+				-- 1등급 엔딩
+				task.spawn(playEnding)
+				return
+			end
 		end
 		modal.Visible = true
 	end

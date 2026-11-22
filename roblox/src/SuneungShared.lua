@@ -167,12 +167,17 @@ function Shared.makeCheat(name, pro, level)
 		cheat.success = math.min(99, cheat.success + 25)
 		cheat.risk = math.max(5, cheat.risk - 15)
 	end
+	-- AI 안경은 무조건 정답
+	if string.find(string.lower(name), "ai 안경", 1, true) or string.find(string.lower(name), "ai안경", 1, true) then
+		cheat.success = 100
+		cheat.type = pro and "전문점 정품 (100%)" or "AI 안경 (100%)"
+	end
 	-- 업그레이드 전문점 강화 단계
 	level = level or 0
 	if level > 0 then
 		cheat.level = level
 		cheat.type = cheat.type .. " +" .. level
-		cheat.success = math.min(99, cheat.success + 8 * level)
+		cheat.success = math.min(cheat.success == 100 and 100 or 99, cheat.success + 8 * level)
 		cheat.risk = math.max(3, cheat.risk - 5 * level)
 	end
 	return cheat
