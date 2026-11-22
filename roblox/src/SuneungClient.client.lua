@@ -134,7 +134,9 @@ end)
 local top = card({ Parent = root, Size = UDim2.new(1, -32, 0, 48), Position = UDim2.fromOffset(16, 12) })
 text({ Parent = top, Text = "한국 수능 부정행위", Font = F.bold, TextSize = 18, Size = UDim2.new(0, 260, 1, 0), Position = UDim2.fromOffset(18, 0) })
 local nukeBtn = button({ Parent = top, Text = "핵폭탄 발사", TextSize = 13, BackgroundColor3 = Color3.fromRGB(200, 30, 30), AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.fromOffset(110, 32), Position = UDim2.new(0, 200, 0.5, 0) })
-local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -480, 1, 0), Position = UDim2.new(0, 320, 0, 0) })
+local floodBtn = button({ Parent = top, Text = "홍수", TextSize = 13, BackgroundColor3 = Color3.fromRGB(30, 110, 200), AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.fromOffset(70, 32), Position = UDim2.new(0, 318, 0.5, 0) })
+local poopBtn = button({ Parent = top, Text = "똥누기", TextSize = 13, BackgroundColor3 = Color3.fromRGB(120, 75, 30), AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.fromOffset(80, 32), Position = UDim2.new(0, 396, 0.5, 0) })
+local status = text({ Parent = top, Text = "대기 중", Font = F.mid, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -640, 1, 0), Position = UDim2.new(0, 484, 0, 0) })
 local moneyLabel = text({ Parent = top, Text = "", Font = F.bold, TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(0, 130, 1, 0), Position = UDim2.new(1, -148, 0, 0) })
 
 -------------------------------------------------------------------
@@ -901,6 +903,12 @@ end
 nukeBtn.MouseButton1Click:Connect(function()
 	remote:FireServer("Nuke")
 end)
+floodBtn.MouseButton1Click:Connect(function()
+	remote:FireServer("Flood")
+end)
+poopBtn.MouseButton1Click:Connect(function()
+	remote:FireServer("Poop")
+end)
 
 startBtn.MouseButton1Click:Connect(function()
 	local c = cheats[selected]
@@ -1374,6 +1382,8 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 			end
 			warn:Destroy()
 		end)
+	elseif action == "FloodWarn" then
+		toast(data .. " 님이 홍수를 일으켰습니다! 교실 뒤 사다리로 지붕에 대피!")
 	elseif action == "NukeBoom" then
 		local flash = new("Frame", { Parent = gui, ZIndex = 195, BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1) })
 		TweenService:Create(flash, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { BackgroundTransparency = 1 }):Play()
@@ -1431,7 +1441,12 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.reason == "nuke" then
+		if data.reason == "flood" then
+			mTitle.Text = "홍수"
+			mGrade.Text = "익사"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("시험장이 물에 잠겼다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "nuke" then
 			mTitle.Text = "핵폭탄"
 			mGrade.Text = "전멸"
 			mGrade.TextColor3 = C.danger

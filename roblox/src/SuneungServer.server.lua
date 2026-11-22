@@ -676,6 +676,7 @@ end
 -- reason: nil(정상 종료/시간 종료) | "caught" | "car"
 local endingPending = {} -- [player] = 엔딩 끝 폭발 대기
 local nukeRequest -- 아래 핵폭탄 부분에서 정의
+local floodRequest, poopRequest -- 아래에서 정의
 local function endSession(player, reason)
 	local s = sessions[player]
 	if not s or s.ended then
@@ -831,6 +832,18 @@ end)
 -------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
+	if action == "Flood" then
+		if floodRequest and player.Character then
+			floodRequest(player)
+		end
+		return
+	end
+	if action == "Poop" then
+		if poopRequest and player.Character then
+			poopRequest(player)
+		end
+		return
+	end
 	if action == "Nuke" then
 		if nukeRequest and player.Character then
 			nukeRequest(player)
@@ -1622,36 +1635,82 @@ local function makeDrivable(model)
 	end)
 	table.insert(drivables, {
 		model = model, seat = seat, speed = 0, yaw = yaw0, rel = rel,
+		home = { pos = pivot.Position, yaw = yaw0 }, lastHum = nil,
 		pos = pivot.Position, offset = pivot.Position.Y - groundY(pivot.Position, model),
 		radius = math.max(size.X, size.Z) / 2 + 1,
 		dir = model:GetAttribute("Reverse") and -1 or 1,
 	})
 end
 
-local function buildDefaultCar()
-	local m = buildCar(Color3.fromRGB(255, 120, 0))
-	m.Name = "탈것"
-	m:PivotTo(CFrame.new(30, 0, ROOM_Z1 + 18))
-	m.Parent = world
-	return m
+-- 주차장 (교실 뒤): 차 50대
+local DRIVE_COUNT = 50
+local LOT_COLS, LOT_ROWS = 10, 5
+local LOT_X0, LOT_Z0 = -54, ROOM_Z1 + 16
+box(LOT_X0 - 6, -0.2, LOT_Z0 - 8, LOT_X0 + (LOT_COLS - 1) * 12 + 6, 0.05, LOT_Z0 + (LOT_ROWS - 1) * 18 + 10, { Name = "ParkingLot", Color = Color3.fromRGB(70, 72, 78), Material = Enum.Material.Asphalt })
+local function lotSpot(i)
+	local c = (i - 1) % LOT_COLS
+	local r = math.floor((i - 1) / LOT_COLS)
+	return CFrame.new(LOT_X0 + c * 12, 0, LOT_Z0 + r * 18)
+end
+for i = 1, DRIVE_COUNT do
+	local cf = lotSpot(i)
+	box(cf.X - 5.2, 0.05, cf.Z - 7.5, cf.X - 4.9, 0.1, cf.Z + 7.5, { Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, CanCollide = false })
 end
 
 do
-	local found = false
+	-- Workspace 의 "탈것" 모델(없으면 기본 차)을 복제해서 50대 채우기
+	local originals = {}
 	for _, m in ipairs(workspace:GetChildren()) do
 		if m:IsA("Model") and m.Name == "탈것" then
-			makeDrivable(m)
-			found = true
+			table.insert(originals, m)
 		end
 	end
-	if not found then
-		makeDrivable(buildDefaultCar())
+	for i = 1, DRIVE_COUNT do
+		local m
+		if #originals > 0 then
+			local src = originals[(i - 1) % #originals + 1]
+			if i <= #originals then
+				m = src
+			else
+				m = src:Clone()
+				m.Parent = workspace
+			end
+			-- 원래 방향은 유지하고 주차 칸으로 이동
+			local pv = m:GetPivot()
+			local look = pv.LookVector
+			local yaw = math.atan2(-look.X, -look.Z)
+			local rel = CFrame.Angles(0, yaw, 0):Inverse() * (pv - pv.Position)
+			local spot = lotSpot(i)
+			m:PivotTo(CFrame.new(spot.X, pv.Y - groundY(pv.Position, m), spot.Z) * CFrame.Angles(0, yaw, 0) * rel)
+		else
+			m = buildCar(CAR_COLORS[(i - 1) % #CAR_COLORS + 1])
+			m.Name = "탈것"
+			m:PivotTo(lotSpot(i))
+			m.Parent = world
+		end
+		makeDrivable(m)
 	end
+end
+
+-- 운전자가 죽으면 차를 원래 주차 칸으로
+local function resetCar(c)
+	c.speed = 0
+	c.pos = Vector3.new(c.home.pos.X, c.home.pos.Y, c.home.pos.Z)
+	c.yaw = c.home.yaw
+	c.model:PivotTo(CFrame.new(c.pos) * CFrame.Angles(0, c.yaw, 0) * c.rel)
 end
 
 RunService.Heartbeat:Connect(function(dt)
 	for _, c in ipairs(drivables) do
 		local hum = c.seat.Occupant
+		if c.lastHum and (c.lastHum.Health <= 0 or not c.lastHum:IsDescendantOf(workspace)) then
+			c.lastHum = nil
+			resetCar(c)
+		elseif hum then
+			c.lastHum = hum
+		elseif c.lastHum then
+			c.lastHum = nil -- 그냥 내림
+		end
 		local throttle = hum and c.seat.ThrottleFloat or 0
 		local steer = hum and c.seat.SteerFloat or 0
 		local target = throttle * DRIVE_MAX
@@ -1770,6 +1829,155 @@ nukeRequest = function(player)
 		return
 	end
 	task.spawn(launchNuke, player)
+end
+
+-------------------------------------------------------------------
+-- 홍수 (60초에 한 번): 물이 차오르고 오래 잠겨 있으면 익사
+-- 교실 뒤 벽 사다리로 지붕에 올라가면 안전
+-------------------------------------------------------------------
+do
+	local ladder = Instance.new("TrussPart")
+	ladder.Anchored = true
+	ladder.Size = Vector3.new(2, WALL_H + 2, 2)
+	ladder.Position = Vector3.new(-8, (WALL_H + 2) / 2, ROOM_Z1 + 1.5)
+	ladder.Color = Color3.fromRGB(200, 200, 60)
+	ladder.Parent = world
+	local sign2 = box(-11, 4, ROOM_Z1 + 0.6, -5, 6, ROOM_Z1 + 0.7, { Color = Color3.fromRGB(30, 120, 200) })
+	surfaceText(sign2, Enum.NormalId.Back, "지붕 대피 사다리", Color3.new(1, 1, 1))
+end
+
+local FLOOD_COOLDOWN = 60
+local FLOOD_MAX = 12
+local lastFlood = -math.huge
+local floodLevel = -1
+local water = part({ Name = "FloodWater", Size = Vector3.new(800, 0.1, 800), Position = Vector3.new(60, -1, 20), Color = Color3.fromRGB(40, 110, 190), Material = Enum.Material.Glass, Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false })
+
+local function setWater(level)
+	floodLevel = level
+	local h = math.max(0.1, level + 1)
+	water.Size = Vector3.new(800, h, 800)
+	water.Position = Vector3.new(60, -1 + h / 2, 20)
+end
+
+local function runFlood(byPlayer)
+	lastFlood = os.clock()
+	logAll(byPlayer.DisplayName .. " 홍수 발동!")
+	remote:FireAllClients("FloodWarn", byPlayer.DisplayName)
+	water.Transparency = 0.35
+	local function animate(from, to, dur)
+		local t0 = os.clock()
+		while os.clock() - t0 < dur do
+			setWater(from + (to - from) * ((os.clock() - t0) / dur))
+			task.wait()
+		end
+		setWater(to)
+	end
+	animate(-1, FLOOD_MAX, 12)
+	task.wait(12)
+	animate(FLOOD_MAX, -1, 8)
+	water.Transparency = 1
+end
+
+-- 익사 검사
+local underwater = {}
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local char = player.Character
+			local head = char and char:FindFirstChild("Head")
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if head and hum and hum.Health > 0 and head.Position.Y < floodLevel - 0.3 then
+				underwater[player] = (underwater[player] or 0) + 0.25
+				if underwater[player] == 1 then
+					toast(player, "물에 잠겼다! 교실 뒤 사다리로 지붕에 올라가세요!")
+				end
+				if underwater[player] >= 5 then
+					underwater[player] = 0
+					local s = sessions[player]
+					if s then
+						s.deathReason = "flood"
+					end
+					hum.Health = 0
+					logAll(player.DisplayName .. " 익사")
+				end
+			else
+				underwater[player] = 0
+			end
+		end
+	end
+end)
+
+floodRequest = function(player)
+	local left = FLOOD_COOLDOWN - (os.clock() - lastFlood)
+	if left > 0 then
+		toast(player, "홍수 준비 중… " .. math.ceil(left) .. "초")
+		return
+	end
+	task.spawn(runFlood, player)
+end
+
+-------------------------------------------------------------------
+-- 똥누기 (3초에 한 번): 밟으면 미끄러짐, 시험 중이면 감독관이 냄새를 맡음
+-------------------------------------------------------------------
+local lastPoop = {}
+poopRequest = function(player)
+	local now = os.clock()
+	if lastPoop[player] and now - lastPoop[player] < 3 then
+		return
+	end
+	lastPoop[player] = now
+	local char, hum, hrp = getParts(player)
+	if not hrp or not hum or hum.Health <= 0 then
+		return
+	end
+	local behind = (hrp.CFrame * CFrame.new(0, 0, 2)).Position
+	local gy = groundY(behind, char)
+	local base = Vector3.new(behind.X, gy, behind.Z)
+	local m = Instance.new("Model")
+	m.Name = "Poop"
+	local brown = Color3.fromRGB(110, 70, 30)
+	local layers = { { 2.2, 0.7 }, { 1.6, 0.6 }, { 1.0, 0.55 }, { 0.45, 0.45 } }
+	local y = 0
+	local bottom
+	for i, l in ipairs(layers) do
+		local p = part({ Parent = m, Size = Vector3.new(l[2], l[1], l[1]), CFrame = CFrame.new(base + Vector3.new(0, y + l[2] / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), Shape = Enum.PartType.Cylinder, Color = brown, Material = Enum.Material.SmoothPlastic, CanCollide = false })
+		if i == 1 then
+			bottom = p
+		end
+		y = y + l[2] * 0.75
+	end
+	local smell = Instance.new("Smoke")
+	smell.Color = Color3.fromRGB(120, 170, 60)
+	smell.Opacity = 0.15
+	smell.RiseVelocity = 2
+	smell.Size = 1.5
+	smell.Parent = bottom
+	m.Parent = world
+	-- 밟으면 미끄러짐
+	local slipped = {}
+	bottom.CanTouch = true
+	bottom.Touched:Connect(function(hit)
+		local h = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
+		local pl = h and Players:GetPlayerFromCharacter(hit.Parent)
+		if h and pl and pl ~= player and not slipped[pl] then
+			slipped[pl] = true
+			h.Sit = true
+			toast(pl, "똥을 밟고 미끄러졌다!")
+		end
+	end)
+	logAll(player.DisplayName .. " 똥 쌌다")
+	local s = sessions[player]
+	if s and not s.ended then
+		s.suspicion = math.min(100, s.suspicion + 10)
+		remote:FireClient(player, "Timer", s.timeLeft, s.suspicion)
+		toast(player, "감독관이 냄새를 맡았다… 의심도 +10")
+	else
+		toast(player, "뿌직.")
+	end
+	task.delay(30, function()
+		m:Destroy()
+	end)
 end
 
 -- 타이머
