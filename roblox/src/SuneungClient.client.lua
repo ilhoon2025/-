@@ -1768,6 +1768,96 @@ local function sceneDream()
 	end
 end
 
+-------------------------------------------------------------------
+-- 동굴 부대 (군대 게임 모드) 화면
+-------------------------------------------------------------------
+local armyMode = false
+local armyGui = new("ScreenGui", { Name = "ArmyUI", ResetOnSpawn = false, IgnoreGuiInset = true, Enabled = false, Parent = player:WaitForChild("PlayerGui") })
+local armyHud = new("Frame", { Parent = armyGui, BackgroundColor3 = Color3.fromRGB(40, 48, 32), BackgroundTransparency = 0.1, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.42, 0.13), Position = UDim2.fromScale(0.5, 0.02) }, { corner(12), stroke(Color3.fromRGB(150, 160, 110), 2) })
+local armyRank = text({ Parent = armyHud, Text = "이병", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 220, 90), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.25, 0.8), Position = UDim2.fromScale(0.02, 0.1) })
+local armyMission = text({ Parent = armyHud, Text = "", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(235, 240, 220), Size = UDim2.fromScale(0.68, 0.42), Position = UDim2.fromScale(0.3, 0.1) })
+local armyProg = text({ Parent = armyHud, Text = "", Font = F.mid, TextScaled = true, TextColor3 = Color3.fromRGB(190, 200, 160), Size = UDim2.fromScale(0.68, 0.3), Position = UDim2.fromScale(0.3, 0.58) })
+text({ Parent = armyGui, Text = "마우스 왼쪽 클릭: 사격   ·   계급: 이병 → 일병 → 상병 → 병장 → 전역", Font = F.mid, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.4, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromScale(0.6, 0.03), Position = UDim2.fromScale(0.5, 0.98) })
+-- 조준점
+local cross = new("Frame", { Parent = armyGui, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(24, 24), Position = UDim2.fromScale(0.5, 0.5) })
+new("Frame", { Parent = cross, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(2, 24), Position = UDim2.fromScale(0.5, 0.5) })
+new("Frame", { Parent = cross, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(24, 2), Position = UDim2.fromScale(0.5, 0.5) })
+local mouse = player:GetMouse()
+RunService.RenderStepped:Connect(function()
+	if armyMode then
+		cross.Position = UDim2.fromOffset(mouse.X, mouse.Y + 36)
+	end
+end)
+local armyToast = text({ Parent = armyGui, Text = "", Font = F.bold, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(30, 35, 25), BackgroundTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.5, 0.05), Position = UDim2.fromScale(0.5, 0.17), Visible = false })
+local armyToastId = 0
+local function armyToastShow(msg)
+	armyToastId = armyToastId + 1
+	local my = armyToastId
+	armyToast.Text = msg
+	armyToast.Visible = true
+	task.delay(2.5, function()
+		if armyToastId == my then
+			armyToast.Visible = false
+		end
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not armyMode then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		local char = player.Character
+		if char and char:FindFirstChild("소총") then
+			remote:FireServer("Shoot", mouse.Hit.Position)
+		end
+	end
+end)
+
+-- 입대 장면
+local function sceneEnlist()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(40, 48, 32)
+	local t1 = eText("그리고 몇 년 뒤…", 0.06, Color3.fromRGB(220, 225, 200), 0.3, F.mid, 160)
+	fadeIn(t1)
+	task.wait(1.5)
+	local t2 = eText("입대 날이 왔다. 배치받은 곳은… 동굴 부대.", 0.07, Color3.fromRGB(255, 220, 90), 0.45, F.bold, 160)
+	fadeIn(t2)
+	task.wait(1)
+	local go = button({ Parent = endingLayer, ZIndex = 160, Text = "입대하기", Font = F.bold, TextScaled = true, BackgroundColor3 = Color3.fromRGB(90, 110, 60), AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.2, 0.08), Position = UDim2.fromScale(0.5, 0.7) })
+	new("UIPadding", { Parent = go, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+	local done = false
+	go.MouseButton1Click:Connect(function()
+		done = true
+	end)
+	repeat
+		task.wait()
+	until done
+end
+
+-- 전역 화면
+local armyEndLayer = new("Frame", { Parent = armyGui, BackgroundColor3 = Color3.fromRGB(40, 48, 32), Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
+text({ Parent = armyEndLayer, ZIndex = 51, Text = "전역을 축하합니다!", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 220, 90), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.12), Position = UDim2.fromScale(0.5, 0.35) })
+local armyEndDesc = text({ Parent = armyEndLayer, ZIndex = 51, Text = "", Font = F.mid, TextScaled = true, TextColor3 = Color3.fromRGB(220, 225, 200), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.045), Position = UDim2.fromScale(0.5, 0.48) })
+local armyBack = button({ Parent = armyEndLayer, ZIndex = 51, Text = "학교로 돌아가기", Font = F.bold, TextScaled = true, BackgroundColor3 = Color3.fromRGB(90, 110, 60), AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.24, 0.08), Position = UDim2.fromScale(0.5, 0.65) })
+new("UIPadding", { Parent = armyBack, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+armyBack.MouseButton1Click:Connect(function()
+	armyEndLayer.Visible = false
+	armyGui.Enabled = false
+	armyMode = false
+	UserInputService.MouseIconEnabled = true
+	root.Visible = true
+	remote:FireServer("LeaveArmy")
+end)
+
+local function startArmy()
+	armyMode = true
+	root.Visible = false
+	armyGui.Enabled = true
+	armyHud.Visible = true
+	remote:FireServer("EnlistArmy")
+end
+
 local function playEnding()
 	root.Visible = false
 	endingLayer.Visible = true
@@ -1798,11 +1888,13 @@ local function playEnding()
 	end
 	sceneFinal(total, max)
 	sceneDream()
+	sceneEnlist()
 	clearEnding()
 	endingLayer.Visible = false
-	root.Visible = true
 	setExamMode(false)
 	status.Text = "고등학교 수업 시간"
+	-- 마지막: 동굴 부대 군대 게임 시작
+	startArmy()
 end
 
 remote.OnClientEvent:Connect(function(action, data, extra, extra2)
@@ -1883,6 +1975,16 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		task.delay(2.6, function()
 			flash:Destroy()
 		end)
+	elseif action == "Army" then
+		armyRank.Text = data.rank
+		armyMission.Text = "임무: " .. data.mission
+		armyProg.Text = data.progress ~= "" and ("진행: " .. data.progress) or ""
+	elseif action == "ArmyEnd" then
+		armyHud.Visible = false
+		armyEndDesc.Text = "병장 " .. data .. ", 동굴 부대에서 무사히 전역했습니다. 충성!"
+		armyEndLayer.Visible = true
+	elseif action == "Toast" and armyMode then
+		armyToastShow(data)
 	elseif action == "Toast" then
 		toast(data)
 	elseif action == "Inventory" then

@@ -971,6 +971,7 @@ end
 local endingPending = {} -- [player] = 엔딩 끝 폭발 대기
 local nukeRequest -- 아래 핵폭탄 부분에서 정의
 local floodRequest, poopRequest -- 아래에서 정의
+local enlistArmy, leaveArmy, armyShoot, armyRespawn -- 동굴 부대 (아래에서 정의)
 local function endSession(player, reason)
 	local s = sessions[player]
 	if not s or s.ended then
@@ -1077,6 +1078,9 @@ Players.PlayerAdded:Connect(function(player)
 	perks[player] = {}
 	player.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid")
+		if armyRespawn then
+			task.defer(armyRespawn, player)
+		end
 		hum.Died:Connect(function()
 			local s = sessions[player]
 			if s and not s.ended then
@@ -1126,6 +1130,24 @@ end)
 -------------------------------------------------------------------
 remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
+	if action == "EnlistArmy" then
+		if enlistArmy and player.Character and not sessions[player] then
+			enlistArmy(player)
+		end
+		return
+	end
+	if action == "LeaveArmy" then
+		if leaveArmy then
+			leaveArmy(player)
+		end
+		return
+	end
+	if action == "Shoot" then
+		if armyShoot then
+			armyShoot(player, arg)
+		end
+		return
+	end
 	if action == "Flood" then
 		if floodRequest and player.Character then
 			floodRequest(player)
@@ -2318,6 +2340,309 @@ poopRequest = function(player)
 		m:Destroy()
 	end)
 end
+
+-------------------------------------------------------------------
+-- 동굴 부대 (군대 게임 모드): 엔딩 끝에 입대하면 플레이
+-- 임무: 1 점호 → 2 사격훈련 → 3 경계근무 → 4 전역
+-------------------------------------------------------------------
+local AO = Vector3.new(0, 0, -700) -- 동굴 기지 위치
+local RANKS = { "이병", "일병", "상병", "병장", "전역" }
+local MISSIONS = {
+	"생활관 앞 노란 점호 장소로 집합!",
+	"사격장에서 표적 10개 명중!",
+	"초소를 지켜라! 동굴에서 오는 적 8명 저지!",
+	"전역 게이트(초록 문)로 나가라!",
+}
+local armyState = {} -- [player] = { stage, count, enemies }
+local armyFolder = Instance.new("Folder")
+armyFolder.Name = "CaveBase"
+armyFolder.Parent = world
+
+local function A(x, y, z)
+	return AO + Vector3.new(x, y, z)
+end
+local function abox(x0, y0, z0, x1, y1, z1, props)
+	props = props or {}
+	props.Parent = props.Parent or armyFolder
+	return box(AO.X + x0, y0, AO.Z + z0, AO.X + x1, y1, AO.Z + z1, props)
+end
+
+-- 동굴 만들기
+local ROCK = { Color = Color3.fromRGB(70, 65, 60), Material = Enum.Material.Slate }
+local function rock()
+	return { Color = ROCK.Color, Material = ROCK.Material }
+end
+abox(-85, -1, -65, 85, 0, 65, { Color = Color3.fromRGB(90, 80, 65), Material = Enum.Material.Ground })
+abox(-85, 0, -65, -80, 24, 65, rock())
+abox(80, 0, -65, 85, 24, 65, rock())
+abox(-85, 0, 60, 85, 24, 65, rock())
+abox(-85, 0, -65, 85, 24, -60, rock())
+abox(-85, 24, -65, 85, 28, 65, rock())
+-- 울퉁불퉁한 바위
+for i = 1, 24 do
+	local x, z = math.random(-75, 75), math.random(-55, 55)
+	if math.abs(x) > 30 or math.abs(z) > 50 then
+		local sz = math.random(3, 7)
+		local p = part({ Parent = armyFolder, Size = Vector3.new(sz, sz, sz), Position = A(x, sz / 2 - 1, z), Orientation = Vector3.new(math.random(0, 90), math.random(0, 90), 0), Color = ROCK.Color, Material = ROCK.Material })
+		p.Name = "Rock"
+	end
+end
+-- 횃불 조명
+for _, pos in ipairs({ { -60, 40 }, { -20, 40 }, { 20, 40 }, { 60, 40 }, { -60, -20 }, { -20, -20 }, { 20, -20 }, { 60, -20 }, { -40, -50 }, { 40, -50 }, { 0, 10 } }) do
+	local t = part({ Parent = armyFolder, Size = Vector3.new(0.8, 0.8, 0.8), Position = A(pos[1], 14, pos[2]), Color = Color3.fromRGB(255, 150, 50), Material = Enum.Material.Neon })
+	local l = Instance.new("PointLight")
+	l.Color = Color3.fromRGB(255, 170, 90)
+	l.Range = 34
+	l.Brightness = 1.6
+	l.Parent = t
+end
+-- 생활관 침상
+for i = 0, 5 do
+	abox(-75, 0, 22 + i * 6, -63, 1.5, 26 + i * 6, { Color = Color3.fromRGB(100, 110, 80), Material = Enum.Material.Fabric })
+	abox(-75, 1.5, 22 + i * 6, -73, 2.1, 26 + i * 6, { Color = Color3.fromRGB(230, 230, 220) })
+end
+local sign1 = abox(-79.9, 8, 26, -79.7, 12, 50, { Color = Color3.fromRGB(40, 50, 35) })
+surfaceText(sign1, Enum.NormalId.Right, "생활관", Color3.fromRGB(230, 230, 200))
+-- 점호 장소
+local rollcall = part({ Parent = armyFolder, Size = Vector3.new(0.3, 10, 10), CFrame = CFrame.new(A(-25, 0.15, 38)) * CFrame.Angles(0, 0, math.rad(90)), Shape = Enum.PartType.Cylinder, Color = Color3.fromRGB(255, 220, 60), Material = Enum.Material.Neon, CanCollide = false })
+-- 사격장: 사로(모래주머니)와 표적 10개
+abox(24, 0, -40, 27, 2.5, 40, { Color = Color3.fromRGB(190, 170, 120), Material = Enum.Material.Sand })
+local targets = {}
+for i = 0, 9 do
+	local z = -36 + i * 8
+	local x = 55 + (i % 3) * 8
+	abox(x - 0.2, 0, z - 0.2, x + 0.2, 4, z + 0.2, { Color = Color3.fromRGB(90, 70, 50) })
+	local t = part({ Parent = armyFolder, Name = "Target", Size = Vector3.new(0.4, 3.6, 3.6), CFrame = CFrame.new(A(x, 5.5, z)) , Shape = Enum.PartType.Cylinder, Color = Color3.fromRGB(230, 40, 40), Material = Enum.Material.SmoothPlastic })
+	t:SetAttribute("ArmyTarget", true)
+	local inner = part({ Parent = armyFolder, Size = Vector3.new(0.45, 1.6, 1.6), CFrame = t.CFrame, Shape = Enum.PartType.Cylinder, Color = Color3.new(1, 1, 1), CanQuery = false })
+	table.insert(targets, { part = t, inner = inner })
+end
+local sign2 = abox(79.7, 8, -30, 79.9, 12, 30, { Color = Color3.fromRGB(40, 50, 35) })
+surfaceText(sign2, Enum.NormalId.Left, "사격장", Color3.fromRGB(230, 230, 200))
+-- 초소와 적이 나오는 동굴 굴
+local POST = A(-40, 0, -35)
+abox(-46, 0, -41, -34, 3, -40, { Color = Color3.fromRGB(190, 170, 120), Material = Enum.Material.Sand })
+abox(-46, 0, -41, -45, 3, -29, { Color = Color3.fromRGB(190, 170, 120), Material = Enum.Material.Sand })
+abox(-35, 0, -41, -34, 3, -29, { Color = Color3.fromRGB(190, 170, 120), Material = Enum.Material.Sand })
+abox(-46, 9, -41, -34, 9.5, -29, { Color = Color3.fromRGB(80, 90, 60) })
+local TUNNEL = A(-74, 0, -54)
+abox(-80, 0, -60, -68, 12, -59, { Color = Color3.fromRGB(10, 10, 10) })
+-- 전역 게이트
+local gate = abox(-6, 0, -59.5, 6, 12, -59, { Color = Color3.fromRGB(60, 220, 100), Material = Enum.Material.Neon, CanCollide = false })
+surfaceText(gate, Enum.NormalId.Back, "전역 게이트", Color3.fromRGB(10, 60, 20), Enum.Font.GothamBlack)
+local ARMY_SPAWN = A(-55, 3, 40)
+
+local function armySend(player)
+	local st = armyState[player]
+	if st then
+		local prog = ""
+		if st.stage == 2 then
+			prog = st.count .. " / 10"
+		elseif st.stage == 3 then
+			prog = st.count .. " / 8"
+		end
+		remote:FireClient(player, "Army", { rank = RANKS[st.stage], mission = MISSIONS[st.stage], progress = prog, stage = st.stage })
+	end
+end
+
+local function giveRifle(player)
+	local _, hum = getParts(player)
+	if not hum or player.Backpack:FindFirstChild("소총") or (player.Character and player.Character:FindFirstChild("소총")) then
+		return
+	end
+	local tool = Instance.new("Tool")
+	tool.Name = "소총"
+	tool.CanBeDropped = false
+	local h = Instance.new("Part")
+	h.Name = "Handle"
+	h.Size = Vector3.new(0.4, 0.6, 4)
+	h.Color = Color3.fromRGB(30, 30, 30)
+	h.Material = Enum.Material.Metal
+	h.CanCollide = false
+	h.Parent = tool
+	tool.Grip = CFrame.new(0, -0.2, 1)
+	tool.Parent = player.Backpack
+	hum:EquipTool(tool)
+end
+
+local function placeInCave(player)
+	local _, hum, hrp = getParts(player)
+	if hrp and hum then
+		hrp.Anchored = false
+		hum.WalkSpeed = 18
+		hum.JumpPower = 50
+		hrp.CFrame = CFrame.new(ARMY_SPAWN)
+		giveRifle(player)
+	end
+end
+
+local function clearEnemies(st)
+	for _, e in ipairs(st.enemies or {}) do
+		if e.model then
+			e.model:Destroy()
+		end
+	end
+	st.enemies = {}
+end
+
+local function nextStage(player)
+	local st = armyState[player]
+	st.stage = st.stage + 1
+	st.count = 0
+	clearEnemies(st)
+	if st.stage <= 4 then
+		toast(player, RANKS[st.stage] .. " 진급! " .. MISSIONS[st.stage])
+	end
+	armySend(player)
+end
+
+-- 적 (회색 블록 병사)
+local function spawnEnemy(player, st)
+	local m = Instance.new("Model")
+	m.Name = "Enemy"
+	local grey = Color3.fromRGB(110, 110, 115)
+	local body = part({ Parent = m, Name = "Body", Size = Vector3.new(2, 2, 1), Position = TUNNEL + Vector3.new(0, 3.5, 0), Color = grey, CanCollide = false })
+	part({ Parent = m, Size = Vector3.new(2, 2.4, 1), Position = TUNNEL + Vector3.new(0, 1.2, 0), Color = Color3.fromRGB(60, 60, 65), CanCollide = false })
+	part({ Parent = m, Size = Vector3.new(1.5, 1.5, 1.5), Position = TUNNEL + Vector3.new(0, 5.3, 0), Color = Color3.fromRGB(200, 170, 140), CanCollide = false, Shape = Enum.PartType.Ball })
+	part({ Parent = m, Size = Vector3.new(1.7, 0.5, 1.7), Position = TUNNEL + Vector3.new(0, 6, 0), Color = Color3.fromRGB(70, 70, 75), CanCollide = false })
+	for _, p in ipairs(m:GetChildren()) do
+		p:SetAttribute("ArmyEnemy", true)
+	end
+	m.PrimaryPart = body
+	m.Parent = armyFolder
+	table.insert(st.enemies, { model = m, pos = TUNNEL })
+end
+
+-- 동굴 부대 들어가기 / 나가기
+enlistArmy = function(player)
+	armyState[player] = { stage = 1, count = 0, enemies = {}, spawned = 0, nextSpawn = 0 }
+	placeInCave(player)
+	toast(player, "동굴 부대에 입대했습니다! " .. MISSIONS[1])
+	armySend(player)
+end
+leaveArmy = function(player)
+	local st = armyState[player]
+	if st then
+		clearEnemies(st)
+	end
+	armyState[player] = nil
+	player:LoadCharacter()
+end
+
+-- 동굴 부대에서 죽으면 동굴 생활관에서 다시 시작
+armyRespawn = function(player)
+	if armyState[player] and armyState[player].stage <= 4 then
+		task.wait(0.2)
+		placeInCave(player)
+		armySend(player)
+	end
+end
+
+-- 사격
+local lastShot = {}
+armyShoot = function(player, aimPos)
+	local st = armyState[player]
+	if not st or typeof(aimPos) ~= "Vector3" then
+		return
+	end
+	local now = os.clock()
+	if lastShot[player] and now - lastShot[player] < 0.25 then
+		return
+	end
+	lastShot[player] = now
+	local char = player.Character
+	local head = char and char:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	local from = head.Position
+	local dir = aimPos - from
+	if dir.Magnitude < 0.1 then
+		return
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local hit = workspace:Raycast(from, dir.Unit * 400, params)
+	local to = hit and hit.Position or (from + dir.Unit * 400)
+	local len = (to - from).Magnitude
+	local tracer = part({ Size = Vector3.new(0.15, 0.15, len), CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -len / 2), Color = Color3.fromRGB(255, 230, 120), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
+	task.delay(0.08, function()
+		tracer:Destroy()
+	end)
+	if not hit then
+		return
+	end
+	local inst = hit.Instance
+	if inst:GetAttribute("ArmyTarget") and st.stage == 2 and inst.Transparency < 0.5 then
+		inst.Transparency = 0.8
+		st.count = st.count + 1
+		armySend(player)
+		task.delay(1.5, function()
+			inst.Transparency = 0
+		end)
+		if st.count >= 10 then
+			nextStage(player)
+		end
+	elseif inst:GetAttribute("ArmyEnemy") then
+		for i, e in ipairs(st.enemies) do
+			if inst:IsDescendantOf(e.model) then
+				e.model:Destroy()
+				table.remove(st.enemies, i)
+				st.count = st.count + 1
+				armySend(player)
+				if st.count >= 8 then
+					nextStage(player)
+				end
+				break
+			end
+		end
+	end
+end
+
+-- 임무 진행 검사
+RunService.Heartbeat:Connect(function(dt)
+	for player, st in pairs(armyState) do
+		local _, hum, hrp = getParts(player)
+		if hrp and hum and hum.Health > 0 then
+			local p = hrp.Position
+			if st.stage == 1 then
+				if (Vector3.new(p.X, 0, p.Z) - Vector3.new(rollcall.Position.X, 0, rollcall.Position.Z)).Magnitude < 5 then
+					toast(player, "점호 완료! \"이병 " .. player.DisplayName .. "!\"")
+					nextStage(player)
+				end
+			elseif st.stage == 3 then
+				st.nextSpawn = st.nextSpawn - dt
+				if st.spawned < 8 + st.count and #st.enemies < 4 and st.nextSpawn <= 0 then
+					spawnEnemy(player, st)
+					st.spawned = st.spawned + 1
+					st.nextSpawn = 2.5
+				end
+				for i = #st.enemies, 1, -1 do
+					local e = st.enemies[i]
+					local v = POST - e.pos
+					local d = Vector3.new(v.X, 0, v.Z)
+					if d.Magnitude < 3 then
+						toast(player, "적이 초소에 도달했다! 경계근무 다시!")
+						clearEnemies(st)
+						st.count = 0
+						st.spawned = 0
+						armySend(player)
+						break
+					end
+					e.pos = e.pos + d.Unit * 5 * dt
+					e.model:PivotTo(CFrame.lookAt(e.pos + Vector3.new(0, 3.5, 0), POST + Vector3.new(0, 3.5, 0)))
+				end
+			elseif st.stage == 4 then
+				if (p - gate.Position).Magnitude < 8 then
+					st.stage = 5
+					clearEnemies(st)
+					remote:FireClient(player, "ArmyEnd", player.DisplayName)
+				end
+			end
+		end
+	end
+end)
 
 -- 타이머
 task.spawn(function()
@@ -4108,6 +4433,96 @@ local function sceneDream()
 	end
 end
 
+-------------------------------------------------------------------
+-- 동굴 부대 (군대 게임 모드) 화면
+-------------------------------------------------------------------
+local armyMode = false
+local armyGui = new("ScreenGui", { Name = "ArmyUI", ResetOnSpawn = false, IgnoreGuiInset = true, Enabled = false, Parent = player:WaitForChild("PlayerGui") })
+local armyHud = new("Frame", { Parent = armyGui, BackgroundColor3 = Color3.fromRGB(40, 48, 32), BackgroundTransparency = 0.1, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.42, 0.13), Position = UDim2.fromScale(0.5, 0.02) }, { corner(12), stroke(Color3.fromRGB(150, 160, 110), 2) })
+local armyRank = text({ Parent = armyHud, Text = "이병", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 220, 90), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.25, 0.8), Position = UDim2.fromScale(0.02, 0.1) })
+local armyMission = text({ Parent = armyHud, Text = "", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(235, 240, 220), Size = UDim2.fromScale(0.68, 0.42), Position = UDim2.fromScale(0.3, 0.1) })
+local armyProg = text({ Parent = armyHud, Text = "", Font = F.mid, TextScaled = true, TextColor3 = Color3.fromRGB(190, 200, 160), Size = UDim2.fromScale(0.68, 0.3), Position = UDim2.fromScale(0.3, 0.58) })
+text({ Parent = armyGui, Text = "마우스 왼쪽 클릭: 사격   ·   계급: 이병 → 일병 → 상병 → 병장 → 전역", Font = F.mid, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), TextStrokeTransparency = 0.4, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 1), Size = UDim2.fromScale(0.6, 0.03), Position = UDim2.fromScale(0.5, 0.98) })
+-- 조준점
+local cross = new("Frame", { Parent = armyGui, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(24, 24), Position = UDim2.fromScale(0.5, 0.5) })
+new("Frame", { Parent = cross, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(2, 24), Position = UDim2.fromScale(0.5, 0.5) })
+new("Frame", { Parent = cross, BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(24, 2), Position = UDim2.fromScale(0.5, 0.5) })
+local mouse = player:GetMouse()
+RunService.RenderStepped:Connect(function()
+	if armyMode then
+		cross.Position = UDim2.fromOffset(mouse.X, mouse.Y + 36)
+	end
+end)
+local armyToast = text({ Parent = armyGui, Text = "", Font = F.bold, TextScaled = true, TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = Color3.fromRGB(30, 35, 25), BackgroundTransparency = 0.2, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromScale(0.5, 0.05), Position = UDim2.fromScale(0.5, 0.17), Visible = false })
+local armyToastId = 0
+local function armyToastShow(msg)
+	armyToastId = armyToastId + 1
+	local my = armyToastId
+	armyToast.Text = msg
+	armyToast.Visible = true
+	task.delay(2.5, function()
+		if armyToastId == my then
+			armyToast.Visible = false
+		end
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not armyMode then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		local char = player.Character
+		if char and char:FindFirstChild("소총") then
+			remote:FireServer("Shoot", mouse.Hit.Position)
+		end
+	end
+end)
+
+-- 입대 장면
+local function sceneEnlist()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(40, 48, 32)
+	local t1 = eText("그리고 몇 년 뒤…", 0.06, Color3.fromRGB(220, 225, 200), 0.3, F.mid, 160)
+	fadeIn(t1)
+	task.wait(1.5)
+	local t2 = eText("입대 날이 왔다. 배치받은 곳은… 동굴 부대.", 0.07, Color3.fromRGB(255, 220, 90), 0.45, F.bold, 160)
+	fadeIn(t2)
+	task.wait(1)
+	local go = button({ Parent = endingLayer, ZIndex = 160, Text = "입대하기", Font = F.bold, TextScaled = true, BackgroundColor3 = Color3.fromRGB(90, 110, 60), AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.2, 0.08), Position = UDim2.fromScale(0.5, 0.7) })
+	new("UIPadding", { Parent = go, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+	local done = false
+	go.MouseButton1Click:Connect(function()
+		done = true
+	end)
+	repeat
+		task.wait()
+	until done
+end
+
+-- 전역 화면
+local armyEndLayer = new("Frame", { Parent = armyGui, BackgroundColor3 = Color3.fromRGB(40, 48, 32), Size = UDim2.fromScale(1, 1), ZIndex = 50, Visible = false })
+text({ Parent = armyEndLayer, ZIndex = 51, Text = "전역을 축하합니다!", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(255, 220, 90), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.12), Position = UDim2.fromScale(0.5, 0.35) })
+local armyEndDesc = text({ Parent = armyEndLayer, ZIndex = 51, Text = "", Font = F.mid, TextScaled = true, TextColor3 = Color3.fromRGB(220, 225, 200), TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.7, 0.045), Position = UDim2.fromScale(0.5, 0.48) })
+local armyBack = button({ Parent = armyEndLayer, ZIndex = 51, Text = "학교로 돌아가기", Font = F.bold, TextScaled = true, BackgroundColor3 = Color3.fromRGB(90, 110, 60), AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.24, 0.08), Position = UDim2.fromScale(0.5, 0.65) })
+new("UIPadding", { Parent = armyBack, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+armyBack.MouseButton1Click:Connect(function()
+	armyEndLayer.Visible = false
+	armyGui.Enabled = false
+	armyMode = false
+	UserInputService.MouseIconEnabled = true
+	root.Visible = true
+	remote:FireServer("LeaveArmy")
+end)
+
+local function startArmy()
+	armyMode = true
+	root.Visible = false
+	armyGui.Enabled = true
+	armyHud.Visible = true
+	remote:FireServer("EnlistArmy")
+end
+
 local function playEnding()
 	root.Visible = false
 	endingLayer.Visible = true
@@ -4138,11 +4553,13 @@ local function playEnding()
 	end
 	sceneFinal(total, max)
 	sceneDream()
+	sceneEnlist()
 	clearEnding()
 	endingLayer.Visible = false
-	root.Visible = true
 	setExamMode(false)
 	status.Text = "고등학교 수업 시간"
+	-- 마지막: 동굴 부대 군대 게임 시작
+	startArmy()
 end
 
 remote.OnClientEvent:Connect(function(action, data, extra, extra2)
@@ -4223,6 +4640,16 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		task.delay(2.6, function()
 			flash:Destroy()
 		end)
+	elseif action == "Army" then
+		armyRank.Text = data.rank
+		armyMission.Text = "임무: " .. data.mission
+		armyProg.Text = data.progress ~= "" and ("진행: " .. data.progress) or ""
+	elseif action == "ArmyEnd" then
+		armyHud.Visible = false
+		armyEndDesc.Text = "병장 " .. data .. ", 동굴 부대에서 무사히 전역했습니다. 충성!"
+		armyEndLayer.Visible = true
+	elseif action == "Toast" and armyMode then
+		armyToastShow(data)
 	elseif action == "Toast" then
 		toast(data)
 	elseif action == "Inventory" then
