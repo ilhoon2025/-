@@ -1414,6 +1414,161 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+-------------------------------------------------------------------
+-- 저격수 (교실 지붕 위): 몰래 밖에 나간 수험생을 노림
+-------------------------------------------------------------------
+local SNIPER_POS = Vector3.new(ROOM_X - 4, WALL_H + 1, 20)
+local sniper = Instance.new("Model")
+sniper.Name = "Sniper"
+do
+	local camo = Color3.fromRGB(70, 85, 55)
+	local root0 = CFrame.new(SNIPER_POS)
+	local function sp(size, off, color, mat)
+		return part({ Parent = sniper, Size = size, CFrame = root0 * CFrame.new(off), Color = color, Material = mat or Enum.Material.Fabric, CanCollide = false })
+	end
+	local base = sp(Vector3.new(2, 0.2, 2), Vector3.new(0, 0.1, 0), camo)
+	base.Transparency = 1
+	sniper.PrimaryPart = base
+	sp(Vector3.new(1, 2.4, 1), Vector3.new(-0.5, 1.2, 0), Color3.fromRGB(50, 60, 40))
+	sp(Vector3.new(1, 2.4, 1), Vector3.new(0.5, 1.2, 0), Color3.fromRGB(50, 60, 40))
+	sp(Vector3.new(2, 2, 1), Vector3.new(0, 3.4, 0), camo)
+	sp(Vector3.new(1, 1, 2.2), Vector3.new(-1.3, 3.8, -0.8), camo)
+	sp(Vector3.new(1, 1, 2.2), Vector3.new(1.3, 3.8, -0.8), camo)
+	local head = sp(Vector3.new(1.5, 1.5, 1.5), Vector3.new(0, 5.15, 0), Color3.fromRGB(230, 195, 160), Enum.Material.SmoothPlastic)
+	head.Shape = Enum.PartType.Ball
+	sp(Vector3.new(1.7, 0.6, 1.7), Vector3.new(0, 5.8, 0), Color3.fromRGB(40, 50, 35))
+	sp(Vector3.new(1.2, 0.3, 0.2), Vector3.new(0, 5.25, -0.75), Color3.fromRGB(10, 10, 10), Enum.Material.Glass)
+	-- 총
+	sp(Vector3.new(0.35, 0.45, 5), Vector3.new(0, 4, -2.6), Color3.fromRGB(25, 25, 25), Enum.Material.Metal)
+	sp(Vector3.new(0.3, 0.3, 1.2), Vector3.new(0, 4.45, -2), Color3.fromRGB(15, 15, 15), Enum.Material.Metal)
+	makeBillboard(head, "저격수", 2.2, Color3.fromRGB(255, 90, 90))
+end
+sniper.Parent = world
+-- 모래주머니 (도로 쪽)
+for i = -2, 2 do
+	box(SNIPER_POS.X + 2.2, WALL_H + 1, SNIPER_POS.Z + i * 1.6 - 0.8, SNIPER_POS.X + 3.2, WALL_H + 2.2, SNIPER_POS.Z + i * 1.6 + 0.8, { Color = Color3.fromRGB(190, 170, 120), Material = Enum.Material.Sand })
+end
+
+local laser = part({ Name = "SniperLaser", Size = Vector3.new(0.12, 0.12, 1), Color = Color3.fromRGB(255, 30, 30), Material = Enum.Material.Neon, Transparency = 0.3, CanCollide = false, CanQuery = false, CanTouch = false })
+local laserDot = part({ Name = "SniperDot", Size = Vector3.new(1.2, 0.1, 1.2), Color = Color3.fromRGB(255, 30, 30), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false, CanTouch = false })
+
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+rayParams.FilterDescendantsInstances = { sniper, laser, laserDot }
+
+local AIM_TIME = 1.4 -- 조준 후 발사까지
+local sn = { t = 0, lock = nil, lockT = 0, lockLost = 0, cooldown = 0 }
+
+local function aimAt(target)
+	local v = target - SNIPER_POS
+	local yaw = math.atan2(-v.X, -v.Z)
+	sniper:PivotTo(CFrame.new(SNIPER_POS) * CFrame.Angles(0, yaw, 0))
+	local from = (CFrame.new(SNIPER_POS) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, 4.2, -5.2)).Position
+	local dir = target - from
+	local hit = workspace:Raycast(from, dir.Unit * (dir.Magnitude + 2), rayParams)
+	local endPos = hit and hit.Position or target
+	local len = (endPos - from).Magnitude
+	laser.Size = Vector3.new(0.12, 0.12, len)
+	laser.CFrame = CFrame.lookAt(from, endPos) * CFrame.new(0, 0, -len / 2)
+	laserDot.CFrame = CFrame.new(endPos + Vector3.new(0, 0.05, 0))
+	return from, hit
+end
+
+local function shoot(player, from, to)
+	local len = (to - from).Magnitude
+	local tracer = part({ Size = Vector3.new(0.3, 0.3, len), CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -len / 2), Color = Color3.fromRGB(255, 230, 120), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
+	local flash = Instance.new("PointLight")
+	flash.Color = Color3.fromRGB(255, 200, 100)
+	flash.Range = 16
+	flash.Brightness = 5
+	flash.Parent = tracer
+	TweenService:Create(tracer, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+	task.delay(0.4, function()
+		tracer:Destroy()
+	end)
+	local s = sessions[player]
+	local _, hum, hrp = getParts(player)
+	if s then
+		s.deathReason = "sniper"
+	end
+	if hrp then
+		hrp.Anchored = false
+		hrp.AssemblyLinearVelocity = (to - from).Unit * 40 + Vector3.new(0, 20, 0)
+	end
+	if hum then
+		hum.Health = 0
+	end
+	logAll("탕! " .. player.DisplayName .. " 저격당함")
+	remote:FireClient(player, "Toast", "저격수에게 맞았습니다.")
+end
+
+-- 노리는 대상: 시험 중 몰래 나가서 교실 밖에 있는 수험생
+local function canTarget(player)
+	local s = sessions[player]
+	if not s or s.ended or not s.away then
+		return nil
+	end
+	local _, hum, hrp = getParts(player)
+	if not hum or hum.Health <= 0 or not hrp or inRoom(hrp.Position) then
+		return nil
+	end
+	return hrp
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	sn.t = sn.t + dt
+	sn.cooldown = math.max(0, sn.cooldown - dt)
+	if sn.lock then
+		local hrp = canTarget(sn.lock)
+		if not hrp then
+			sn.lock = nil
+		else
+			local from, hit = aimAt(hrp.Position)
+			local visible = hit and hit.Instance and sn.lock.Character and hit.Instance:IsDescendantOf(sn.lock.Character)
+			laser.Transparency = (math.floor(sn.t * 12) % 2 == 0) and 0 or 0.5
+			if not visible then
+				-- 건물이나 차 뒤에 숨으면 놓침
+				sn.lockLost = sn.lockLost + dt
+				if sn.lockLost > 0.6 then
+					remote:FireClient(sn.lock, "Toast", "저격수의 조준을 피했다!")
+					sn.lock = nil
+					sn.cooldown = 2
+				end
+			else
+				sn.lockLost = 0
+				sn.lockT = sn.lockT + dt
+				if sn.lockT >= AIM_TIME then
+					shoot(sn.lock, from, hrp.Position)
+					sn.lock = nil
+					sn.cooldown = 3
+				end
+			end
+			return
+		end
+	end
+	laser.Transparency = 0.3
+	-- 바깥을 천천히 훑기
+	local target = Vector3.new(ROAD_X1 + 10 + math.sin(sn.t * 0.45) * 34, 0, 40 + math.sin(sn.t * 0.31) * 80)
+	local _, hit = aimAt(target)
+	local dot = hit and hit.Position or target
+	if sn.cooldown > 0 then
+		return
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		local hrp = canTarget(player)
+		if hrp then
+			local d = Vector3.new(hrp.Position.X - dot.X, 0, hrp.Position.Z - dot.Z).Magnitude
+			if d < 9 then
+				sn.lock = player
+				sn.lockT = 0
+				sn.lockLost = 0
+				remote:FireClient(player, "Toast", "저격수가 조준 중! 건물이나 차 뒤로 숨으세요!")
+				break
+			end
+		end
+	end
+end)
+
 -- 타이머
 task.spawn(function()
 	while true do
@@ -2521,7 +2676,12 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.reason == "car" then
+		if data.reason == "sniper" then
+			mTitle.Text = "저격당함"
+			mGrade.Text = "실격"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("몰래 나갔다가 지붕 위 저격수에게 맞았습니다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "car" then
 			mTitle.Text = "교통사고"
 			mGrade.Text = "실격"
 			mGrade.TextColor3 = C.danger

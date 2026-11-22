@@ -1086,7 +1086,12 @@ remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 		away = false
 		progBg.Visible = false
 		paper.Visible = false
-		if data.reason == "car" then
+		if data.reason == "sniper" then
+			mTitle.Text = "저격당함"
+			mGrade.Text = "실격"
+			mGrade.TextColor3 = C.danger
+			mDesc.Text = string.format("몰래 나갔다가 지붕 위 저격수에게 맞았습니다.\n푼 문제 %d개 중 %d개 정답", data.answered, data.score)
+		elseif data.reason == "car" then
 			mTitle.Text = "교통사고"
 			mGrade.Text = "실격"
 			mGrade.TextColor3 = C.danger
