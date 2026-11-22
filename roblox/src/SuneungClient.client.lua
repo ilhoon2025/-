@@ -1565,7 +1565,7 @@ local function sceneFinal(score, total)
 	local d = eText(ok and "모든 시험을 통과하고 천국에 들어갔다. 더 이상 시험은 없다." or "다시 태어났다. 눈을 떠 보니… 수능 시험장이다.", 0.045, Color3.fromRGB(90, 80, 60), 0.52, F.mid, 160)
 	fadeIn(d, 1.5)
 	eText("전체 시험 " .. score .. " / " .. total, 0.04, Color3.fromRGB(120, 110, 90), 0.6, F.mid, 160)
-	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "처음으로", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.78) })
+	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "다음", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.78) })
 	new("UIPadding", { Parent = back, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
 	local done = false
 	back.MouseButton1Click:Connect(function()
@@ -1709,6 +1709,65 @@ local function sceneInterview()
 	until done
 end
 
+-- 진짜 마지막: "아.... 꿈이였구나" → 고등학교 수업 시간
+local function sceneDream()
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.new(0, 0, 0)
+	local line = "아.... 꿈이였구나"
+	local label = eText("", 0.08, Color3.new(1, 1, 1), 0.5, F.bold, 160)
+	local chars = {}
+	for _, c in utf8.codes(line) do
+		table.insert(chars, utf8.char(c))
+	end
+	for i = 1, #chars do
+		label.Text = table.concat(chars, "", 1, i)
+		task.wait((chars[i] == ".") and 0.35 or 0.15)
+	end
+	task.wait(2)
+
+	-- 고등학교 수업 시간 (교실 그림)
+	clearEnding()
+	endingLayer.BackgroundColor3 = Color3.fromRGB(232, 226, 205)
+	local board = eBox(Color3.fromRGB(31, 77, 58), UDim2.fromScale(0.6, 0.32), UDim2.fromScale(0.5, 0.42), 152, 6)
+	stroke(Color3.fromRGB(120, 90, 60), 6).Parent = board
+	text({ Parent = board, ZIndex = 153, Text = "3교시  수학\nf(x) = x²  →  f'(x) = 2x", Font = F.bold, TextScaled = true, TextColor3 = Color3.fromRGB(235, 245, 238), TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.05, 0.1) })
+	-- 선생님 (블록 그림)
+	eBox(Color3.fromRGB(60, 70, 110), UDim2.fromScale(0.07, 0.16), UDim2.fromScale(0.85, 0.62), 154, 8)
+	local th = eBox(Color3.fromRGB(240, 205, 175), UDim2.fromScale(0.05, 0.09), UDim2.fromScale(0.85, 0.47), 155, 40)
+	new("UIAspectRatioConstraint", { Parent = th, AspectRatio = 1 })
+	-- 책상 줄
+	for row = 0, 1 do
+		for col = 0, 4 do
+			eBox(Color3.fromRGB(150, 115, 80), UDim2.fromScale(0.12, 0.06), UDim2.fromScale(0.14 + col * 0.18, 0.78 + row * 0.12), 153, 4)
+		end
+	end
+	-- 엎드려 자던 나 (가운데 앞자리)
+	local me = eBox(Color3.fromRGB(76, 110, 245), UDim2.fromScale(0.06, 0.05), UDim2.fromScale(0.5, 0.73), 156, 8)
+	me.Name = "Me"
+	local bubble = new("Frame", { Parent = endingLayer, ZIndex = 160, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(1, 1), Size = UDim2.fromScale(0.36, 0.12), Position = UDim2.fromScale(0.82, 0.4) }, { corner(14), stroke() })
+	text({ Parent = bubble, ZIndex = 161, Text = "거기! 수업 시간에 자면 어떡해!\n수능 얼마 안 남았다!", Font = F.bold, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(0.9, 0.8), Position = UDim2.fromScale(0.05, 0.1) })
+	local cap = eText("고등학교 3학년 · 수업 시간", 0.05, Color3.fromRGB(80, 60, 40), 0.1, F.bold, 160)
+	fadeIn(cap)
+	local back = button({ Parent = endingLayer, ZIndex = 160, Text = "수업 듣기", Font = F.bold, TextScaled = true, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(0.18, 0.07), Position = UDim2.fromScale(0.5, 0.95) })
+	new("UIPadding", { Parent = back, PaddingTop = UDim.new(0.2, 0), PaddingBottom = UDim.new(0.2, 0) })
+	local done = false
+	back.MouseButton1Click:Connect(function()
+		done = true
+	end)
+	repeat
+		task.wait()
+	until done
+
+	-- 내 화면의 교실 칠판도 수업 시간으로 바뀜 (나만 보임)
+	local w = workspace:FindFirstChild("SuneungWorld")
+	local bb = w and w:FindFirstChild("Blackboard")
+	local sg = bb and bb:FindFirstChildOfClass("SurfaceGui")
+	local tl = sg and sg:FindFirstChildOfClass("TextLabel")
+	if tl then
+		tl.Text = "3교시 수학\n수업 중에 졸지 맙시다"
+	end
+end
+
 local function playEnding()
 	root.Visible = false
 	endingLayer.Visible = true
@@ -1738,10 +1797,12 @@ local function playEnding()
 		total, max = total + a, max + b
 	end
 	sceneFinal(total, max)
+	sceneDream()
 	clearEnding()
 	endingLayer.Visible = false
 	root.Visible = true
 	setExamMode(false)
+	status.Text = "고등학교 수업 시간"
 end
 
 remote.OnClientEvent:Connect(function(action, data, extra, extra2)
