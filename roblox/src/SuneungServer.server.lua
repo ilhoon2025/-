@@ -741,7 +741,7 @@ end
 local endingPending = {} -- [player] = 엔딩 끝 폭발 대기
 local nukeRequest -- 아래 핵폭탄 부분에서 정의
 local floodRequest, poopRequest -- 아래에서 정의
-local enlistArmy, leaveArmy, armyShoot, armyRespawn -- 동굴 부대 (아래에서 정의)
+local enlistArmy, leaveArmy, armyShoot, armyRespawn -- K부대 (아래에서 정의)
 local function endSession(player, reason)
 	local s = sessions[player]
 	if not s or s.ended then
@@ -2112,20 +2112,13 @@ poopRequest = function(player)
 end
 
 -------------------------------------------------------------------
--- 동굴 부대 (군대 게임 모드): 엔딩 끝에 입대하면 플레이
--- 임무: 1 점호 → 2 사격훈련 → 3 경계근무 → 4 전역
+-- K부대 (군대 게임 모드): 엔딩 끝에 입대하면 플레이
+-- 훈련 25개: 집합·정리·구보·사격·경계·불침번·화생방·유격·행군 … → 전역
 -------------------------------------------------------------------
 local AO = Vector3.new(0, 0, -700) -- 동굴 기지 위치
-local RANKS = { "이병", "일병", "상병", "병장", "전역" }
-local MISSIONS = {
-	"생활관 앞 노란 점호 장소로 집합!",
-	"사격장에서 표적 10개 명중!",
-	"초소를 지켜라! 동굴에서 오는 적 8명 저지!",
-	"전역 게이트(초록 문)로 나가라!",
-}
 local armyState = {} -- [player] = { stage, count, enemies }
 local armyFolder = Instance.new("Folder")
-armyFolder.Name = "CaveBase"
+armyFolder.Name = "KBase"
 armyFolder.Parent = world
 
 local function A(x, y, z)
@@ -2202,19 +2195,105 @@ local gate = abox(-6, 0, -59.5, 6, 12, -59, { Color = Color3.fromRGB(60, 220, 10
 surfaceText(gate, Enum.NormalId.Back, "전역 게이트", Color3.fromRGB(10, 60, 20), Enum.Font.GothamBlack)
 local ARMY_SPAWN = A(-55, 3, 40)
 
-local function armySend(player)
-	local st = armyState[player]
-	if st then
-		local prog = ""
-		if st.stage == 2 then
-			prog = st.count .. " / 10"
-		elseif st.stage == 3 then
-			prog = st.count .. " / 8"
-		end
-		remote:FireClient(player, "Army", { rank = RANKS[st.stage], mission = MISSIONS[st.stage], progress = prog, stage = st.stage })
+-- PX와 화생방실
+abox(52, 0, 40, 68, 8, 41, { Color = Color3.fromRGB(60, 80, 60) })
+local pxSign = abox(52, 8, 40.9, 68, 10, 41.1, { Color = Color3.fromRGB(30, 60, 120) })
+surfaceText(pxSign, Enum.NormalId.Front, "PX", Color3.new(1, 1, 1), Enum.Font.GothamBlack)
+abox(2, 0, -50, 18, 0.3, -36, { Color = Color3.fromRGB(150, 170, 120), Material = Enum.Material.SmoothPlastic })
+local gasSign = abox(2, 6, -36.1, 18, 8, -35.9, { Color = Color3.fromRGB(120, 140, 60) })
+surfaceText(gasSign, Enum.NormalId.Front, "화생방실", Color3.new(1, 1, 1), Enum.Font.GothamBlack)
+-- K부대 간판
+local kSign = abox(-30, 14, 59.8, 30, 20, 60, { Color = Color3.fromRGB(30, 40, 25) })
+surfaceText(kSign, Enum.NormalId.Front, "K부대", Color3.fromRGB(255, 220, 90), Enum.Font.GothamBlack)
+
+local SPOT = {
+	rollcall = A(-25, 0, 38),
+	bunks = A(-69, 0, 35),
+	post = POST,
+	px = A(60, 0, 36),
+	gas = A(10, 0, -43),
+	gate = A(0, 0, -56),
+}
+local CP = { A(-60, 0, 0), A(-20, 0, -20), A(20, 0, 0), A(60, 0, -30), A(60, 0, 25), A(0, 0, 50), A(-40, 0, 15), A(-70, 0, -30) }
+
+-- 훈련 25개 (kind: goto 이동 / stay 버티기 / run 체크포인트 / shoot 표적 / defend 적 막기 / gate 전역)
+local TRAININGS = {
+	{ "아침 점호", "노란 점호 장소로 집합!", "goto", spot = "rollcall" },
+	{ "침상 정리", "생활관 침상 옆에서 5초 동안 각 잡기", "stay", spot = "bunks", t = 5 },
+	{ "기초 구보", "빛나는 지점 4곳을 차례로 달려라", "run", n = 4 },
+	{ "기초 사격", "표적 5개 명중", "shoot", n = 5 },
+	{ "영점 사격", "표적 10개 명중", "shoot", n = 10 },
+	{ "초소 경계 1", "동굴 굴에서 오는 적 4명 저지", "defend", n = 4 },
+	{ "불침번", "초소에서 15초 동안 근무", "stay", spot = "post", t = 15 },
+	{ "단독 행군", "빛나는 지점 6곳 행군", "run", n = 6 },
+	{ "사격 측정", "표적 15개 명중", "shoot", n = 15 },
+	{ "초소 경계 2", "적 6명 저지", "defend", n = 6 },
+	{ "점심 점호", "노란 점호 장소로 집합!", "goto", spot = "rollcall" },
+	{ "화생방 훈련", "화생방실에서 8초 버티기", "stay", spot = "gas", t = 8 },
+	{ "유격 훈련", "바위 사이 지점 5곳 통과", "run", n = 5 },
+	{ "연발 사격", "표적 20개 명중", "shoot", n = 20 },
+	{ "초소 경계 3", "적 8명 저지", "defend", n = 8 },
+	{ "PX 심부름", "PX에 다녀오기", "goto", spot = "px" },
+	{ "체력 구보", "빛나는 지점 8곳 달리기", "run", n = 8 },
+	{ "정밀 사격", "표적 10개 명중", "shoot", n = 10 },
+	{ "야간 경계", "적 10명 저지", "defend", n = 10 },
+	{ "새벽 불침번", "초소에서 20초 근무", "stay", spot = "post", t = 20 },
+	{ "완전군장 행군", "빛나는 지점 8곳 행군", "run", n = 8 },
+	{ "사격 마스터", "표적 25개 명중", "shoot", n = 25 },
+	{ "최종 방어", "적 12명 저지", "defend", n = 12 },
+	{ "마지막 점호", "노란 점호 장소로 집합!", "goto", spot = "rollcall" },
+	{ "전역", "초록 전역 게이트로 나가라!", "gate", spot = "gate" },
+}
+local TOTAL_TRAIN = #TRAININGS
+
+local function rankOf(stage)
+	if stage > TOTAL_TRAIN then
+		return "전역"
+	elseif stage > 18 then
+		return "병장"
+	elseif stage > 12 then
+		return "상병"
+	elseif stage > 6 then
+		return "일병"
 	end
+	return "이병"
 end
 
+local function markerOf(st)
+	local tr = TRAININGS[st.stage]
+	if not tr then
+		return nil
+	end
+	if tr[3] == "run" then
+		return CP[(st.cpBase + st.count) % #CP + 1]
+	elseif tr.spot then
+		return SPOT[tr.spot]
+	elseif tr[3] == "defend" then
+		return POST
+	end
+	return nil
+end
+
+local function armySend(player)
+	local st = armyState[player]
+	local tr = st and TRAININGS[st.stage]
+	if not tr then
+		return
+	end
+	local prog = ""
+	if tr.n then
+		prog = st.count .. " / " .. tr.n
+	elseif tr.t then
+		prog = math.floor(st.timer) .. " / " .. tr.t .. "초"
+	end
+	remote:FireClient(player, "Army", {
+		rank = rankOf(st.stage),
+		mission = "훈련 " .. st.stage .. "/" .. TOTAL_TRAIN .. " · " .. tr[1],
+		desc = tr[2],
+		progress = prog,
+		marker = markerOf(st),
+	})
+end
 local function giveRifle(player)
 	local _, hum = getParts(player)
 	if not hum or player.Backpack:FindFirstChild("소총") or (player.Character and player.Character:FindFirstChild("소총")) then
@@ -2257,11 +2336,17 @@ end
 
 local function nextStage(player)
 	local st = armyState[player]
+	local before = rankOf(st.stage)
 	st.stage = st.stage + 1
 	st.count = 0
+	st.timer = 0
+	st.spawned = 0
+	st.cpBase = math.random(0, #CP - 1)
 	clearEnemies(st)
-	if st.stage <= 4 then
-		toast(player, RANKS[st.stage] .. " 진급! " .. MISSIONS[st.stage])
+	local tr = TRAININGS[st.stage]
+	if tr then
+		local after = rankOf(st.stage)
+		toast(player, (after ~= before and (after .. " 진급! ") or "훈련 완료! ") .. "다음: " .. tr[1])
 	end
 	armySend(player)
 end
@@ -2283,11 +2368,11 @@ local function spawnEnemy(player, st)
 	table.insert(st.enemies, { model = m, pos = TUNNEL })
 end
 
--- 동굴 부대 들어가기 / 나가기
+-- K부대 들어가기 / 나가기
 enlistArmy = function(player)
-	armyState[player] = { stage = 1, count = 0, enemies = {}, spawned = 0, nextSpawn = 0 }
+	armyState[player] = { stage = 1, count = 0, timer = 0, enemies = {}, spawned = 0, nextSpawn = 0, cpBase = 0 }
 	placeInCave(player)
-	toast(player, "동굴 부대에 입대했습니다! " .. MISSIONS[1])
+	toast(player, "K부대에 입대했습니다! 첫 훈련: " .. TRAININGS[1][1])
 	armySend(player)
 end
 leaveArmy = function(player)
@@ -2297,15 +2382,6 @@ leaveArmy = function(player)
 	end
 	armyState[player] = nil
 	player:LoadCharacter()
-end
-
--- 동굴 부대에서 죽으면 동굴 생활관에서 다시 시작
-armyRespawn = function(player)
-	if armyState[player] and armyState[player].stage <= 4 then
-		task.wait(0.2)
-		placeInCave(player)
-		armySend(player)
-	end
 end
 
 -- 사격
@@ -2344,14 +2420,18 @@ armyShoot = function(player, aimPos)
 		return
 	end
 	local inst = hit.Instance
-	if inst:GetAttribute("ArmyTarget") and st.stage == 2 and inst.Transparency < 0.5 then
+	local tr = TRAININGS[st.stage]
+	if not tr then
+		return
+	end
+	if inst:GetAttribute("ArmyTarget") and tr[3] == "shoot" and inst.Transparency < 0.5 then
 		inst.Transparency = 0.8
 		st.count = st.count + 1
 		armySend(player)
 		task.delay(1.5, function()
 			inst.Transparency = 0
 		end)
-		if st.count >= 10 then
+		if st.count >= tr.n then
 			nextStage(player)
 		end
 	elseif inst:GetAttribute("ArmyEnemy") then
@@ -2361,7 +2441,7 @@ armyShoot = function(player, aimPos)
 				table.remove(st.enemies, i)
 				st.count = st.count + 1
 				armySend(player)
-				if st.count >= 8 then
+				if tr[3] == "defend" and st.count >= tr.n then
 					nextStage(player)
 				end
 				break
@@ -2370,48 +2450,81 @@ armyShoot = function(player, aimPos)
 	end
 end
 
--- 임무 진행 검사
+-- 훈련 진행 검사
 RunService.Heartbeat:Connect(function(dt)
 	for player, st in pairs(armyState) do
 		local _, hum, hrp = getParts(player)
-		if hrp and hum and hum.Health > 0 then
-			local p = hrp.Position
-			if st.stage == 1 then
-				if (Vector3.new(p.X, 0, p.Z) - Vector3.new(rollcall.Position.X, 0, rollcall.Position.Z)).Magnitude < 5 then
-					toast(player, "점호 완료! \"이병 " .. player.DisplayName .. "!\"")
+		local tr = TRAININGS[st.stage]
+		if tr and hrp and hum and hum.Health > 0 then
+			local p = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+			local kind = tr[3]
+			local function near(v, r)
+				return (p - Vector3.new(v.X, 0, v.Z)).Magnitude < r
+			end
+			if kind == "goto" then
+				if near(SPOT[tr.spot], 5) then
 					nextStage(player)
 				end
-			elseif st.stage == 3 then
+			elseif kind == "stay" then
+				local before = math.floor(st.timer)
+				if near(SPOT[tr.spot], 7) then
+					st.timer = st.timer + dt
+				else
+					st.timer = 0
+				end
+				if st.timer >= tr.t then
+					nextStage(player)
+				elseif math.floor(st.timer) ~= before then
+					armySend(player)
+				end
+			elseif kind == "run" then
+				if near(markerOf(st), 5) then
+					st.count = st.count + 1
+					if st.count >= tr.n then
+						nextStage(player)
+					else
+						armySend(player)
+					end
+				end
+			elseif kind == "defend" then
 				st.nextSpawn = st.nextSpawn - dt
-				if st.spawned < 8 + st.count and #st.enemies < 4 and st.nextSpawn <= 0 then
+				if st.spawned < tr.n and #st.enemies < 4 and st.nextSpawn <= 0 then
 					spawnEnemy(player, st)
 					st.spawned = st.spawned + 1
-					st.nextSpawn = 2.5
+					st.nextSpawn = math.max(1.2, 2.6 - st.stage * 0.06)
 				end
+				local speed = 4 + st.stage * 0.12
 				for i = #st.enemies, 1, -1 do
 					local e = st.enemies[i]
-					local v = POST - e.pos
-					local d = Vector3.new(v.X, 0, v.Z)
+					local d = Vector3.new(POST.X - e.pos.X, 0, POST.Z - e.pos.Z)
 					if d.Magnitude < 3 then
-						toast(player, "적이 초소에 도달했다! 경계근무 다시!")
+						toast(player, "적이 초소에 도달했다! 다시!")
 						clearEnemies(st)
 						st.count = 0
 						st.spawned = 0
 						armySend(player)
 						break
 					end
-					e.pos = e.pos + d.Unit * 5 * dt
+					e.pos = e.pos + d.Unit * speed * dt
 					e.model:PivotTo(CFrame.lookAt(e.pos + Vector3.new(0, 3.5, 0), POST + Vector3.new(0, 3.5, 0)))
 				end
-			elseif st.stage == 4 then
-				if (p - gate.Position).Magnitude < 8 then
-					st.stage = 5
+			elseif kind == "gate" then
+				if near(SPOT.gate, 8) then
+					st.stage = TOTAL_TRAIN + 1
 					clearEnemies(st)
 					remote:FireClient(player, "ArmyEnd", player.DisplayName)
 				end
 			end
 		end
 	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	local st = armyState[player]
+	if st then
+		clearEnemies(st)
+	end
+	armyState[player] = nil
 end)
 
 -- 타이머
