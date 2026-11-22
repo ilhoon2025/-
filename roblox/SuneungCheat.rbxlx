@@ -25,6 +25,8 @@ Shared.SHOP = {
 }
 -- 부정행위 전문점: 세상의 전자기기
 Shared.PRO = {
+	{ name = "이어폰", price = 8000 },
+	{ name = "AI 안경", price = 45000 },
 	{ name = "스마트워치", price = 15000 },
 	{ name = "스마트폰", price = 30000 },
 	{ name = "무선 이어폰", price = 12000 },
@@ -64,6 +66,26 @@ function Shared.proPrice(name)
 	end
 	-- 목록에 없는 물건은 맞춤 제작
 	return 20000 + (Shared.hash(name) % 60) * 1000
+end
+
+-- 갈수록 2배: n번째 구매는 기본 가격 × 2^n
+function Shared.doubled(base, n)
+	return base * 2 ^ (n or 0)
+end
+
+-- 업그레이드 전문점
+Shared.UPGRADES = {
+	{ id = "gear", name = "장비 강화", desc = "선택한 부정행위 성공률 +8%, 적발 확률 -5%", base = 5000, max = 8 },
+	{ id = "stealth", name = "살금살금", desc = "몰래 나갔을 때 이동 속도 +3", base = 8000, max = 5 },
+	{ id = "poker", name = "포커페이스", desc = "부정행위할 때 오르는 의심도 -20%", base = 10000, max = 4 },
+	{ id = "quick", name = "빠른 손", desc = "부정행위 시간 -0.4초", base = 12000, max = 5 },
+}
+function Shared.upgrade(id)
+	for _, u in ipairs(Shared.UPGRADES) do
+		if u.id == id then
+			return u
+		end
+	end
 end
 
 function Shared.shopItem(id)
@@ -123,7 +145,7 @@ function Shared.hash(str)
 end
 
 -- 적은 아무거나 → 부정행위 능력치
-function Shared.makeCheat(name, pro)
+function Shared.makeCheat(name, pro, level)
 	local r = Random.new(Shared.hash(name))
 	local copy = false
 	for _, w in ipairs(COPY_WORDS) do
@@ -146,6 +168,14 @@ function Shared.makeCheat(name, pro)
 		cheat.type = "전문점 정품"
 		cheat.success = math.min(99, cheat.success + 25)
 		cheat.risk = math.max(5, cheat.risk - 15)
+	end
+	-- 업그레이드 전문점 강화 단계
+	level = level or 0
+	if level > 0 then
+		cheat.level = level
+		cheat.type = cheat.type .. " +" .. level
+		cheat.success = math.min(99, cheat.success + 8 * level)
+		cheat.risk = math.max(3, cheat.risk - 5 * level)
 	end
 	return cheat
 end
@@ -270,12 +300,12 @@ Lighting.OutdoorAmbient = Color3.fromRGB(140, 140, 150)
 -------------------------------------------------------------------
 -- 땅
 -------------------------------------------------------------------
-part({ Name = "Grass", Size = Vector3.new(500, 1, 500), Position = Vector3.new(40, -0.6, 10), Color = Color3.fromRGB(96, 150, 72), Material = Enum.Material.Grass })
+part({ Name = "Grass", Size = Vector3.new(700, 1, 700), Position = Vector3.new(60, -0.6, 20), Color = Color3.fromRGB(96, 150, 72), Material = Enum.Material.Grass })
 
 -------------------------------------------------------------------
 -- 교실 (넓은 교실 + 창문 + 출입문)
 -------------------------------------------------------------------
-local ROOM_X, ROOM_Z0, ROOM_Z1 = 50, -30, 56
+local ROOM_X, ROOM_Z0, ROOM_Z1 = 70, -36, 80
 local WALL_H = 16
 local WALL_C = Color3.fromRGB(228, 222, 200)
 local GLASS = { Color = Color3.fromRGB(170, 210, 235), Material = Enum.Material.Glass, Transparency = 0.6 }
@@ -346,8 +376,8 @@ local doorSign = box(ROOM_X - 0.8, 11.2, DOOR_Z0, ROOM_X - 0.6, 12.8, DOOR_Z1, {
 surfaceText(doorSign, Enum.NormalId.Left, "출입문", Color3.new(1, 1, 1))
 
 -- 천장 조명
-for _, x in ipairs({ -30, 0, 30 }) do
-	for _, z in ipairs({ -14, 10, 34 }) do
+for _, x in ipairs({ -45, -15, 15, 45 }) do
+	for _, z in ipairs({ -20, 6, 32, 58 }) do
 		local lamp = part({ Name = "Lamp", Size = Vector3.new(10, 0.3, 2), Position = Vector3.new(x, WALL_H - 0.2, z), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon })
 		local light = Instance.new("PointLight")
 		light.Range = 26
@@ -357,7 +387,7 @@ for _, x in ipairs({ -30, 0, 30 }) do
 end
 
 -- 칠판
-local board = part({ Name = "Blackboard", Size = Vector3.new(56, 8, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
+local board = part({ Name = "Blackboard", Size = Vector3.new(72, 9, 0.4), Position = Vector3.new(0, 8.5, ROOM_Z0 + 0.7), Color = Color3.fromRGB(31, 77, 58) })
 surfaceText(board, Enum.NormalId.Back, "2027학년도 대학수학능력시험\n부정행위 적발 시 가루 처리", Color3.fromRGB(233, 245, 238), Enum.Font.GothamBlack)
 
 -- 스폰 (교실 뒤쪽)
@@ -375,8 +405,8 @@ spawn.Parent = world
 -- 책상
 -------------------------------------------------------------------
 local desks = {} -- { pos, occupant = Player|nil, seed, dying }
-local COLS_X = { -35, -21, -7, 7, 21, 35 }
-local ROWS_Z = { -12, 2, 16, 30 }
+local COLS_X = { -49, -35, -21, -7, 7, 21, 35, 49 }
+local ROWS_Z = { -16, -2, 12, 26, 40, 54 }
 
 local function buildDesk(pos)
 	local deskZ = pos.Z - 2.2
@@ -402,16 +432,16 @@ end
 -------------------------------------------------------------------
 -- 도로 & 차
 -------------------------------------------------------------------
-local ROAD_X0, ROAD_X1 = 62, 90
+local ROAD_X0, ROAD_X1 = 82, 110
 local ROAD_LEN = 340
 box(ROOM_X, -0.2, -ROAD_LEN / 2, ROAD_X0, 0.3, ROAD_LEN / 2, { Name = "Sidewalk", Color = Color3.fromRGB(190, 190, 185), Material = Enum.Material.Concrete })
 box(ROAD_X0, -0.2, -ROAD_LEN / 2, ROAD_X1, 0.05, ROAD_LEN / 2, { Name = "Road", Color = Color3.fromRGB(55, 57, 62), Material = Enum.Material.Asphalt })
 box(ROAD_X1, -0.2, -ROAD_LEN / 2, ROAD_X1 + 8, 0.3, ROAD_LEN / 2, { Name = "Sidewalk2", Color = Color3.fromRGB(190, 190, 185), Material = Enum.Material.Concrete })
 -- 중앙선
-box(75.7, 0.05, -ROAD_LEN / 2, 76.3, 0.1, ROAD_LEN / 2, { Color = Color3.fromRGB(240, 190, 40), Material = Enum.Material.SmoothPlastic, CanCollide = false })
+box(95.7, 0.05, -ROAD_LEN / 2, 76.3, 0.1, ROAD_LEN / 2, { Color = Color3.fromRGB(240, 190, 40), Material = Enum.Material.SmoothPlastic, CanCollide = false })
 -- 차선
 for z = -ROAD_LEN / 2, ROAD_LEN / 2 - 8, 14 do
-	for _, x in ipairs({ 69, 83 }) do
+	for _, x in ipairs({ 89, 103 }) do
 		box(x - 0.2, 0.05, z, x + 0.2, 0.1, z + 7, { Color = Color3.new(1, 1, 1), Material = Enum.Material.SmoothPlastic, CanCollide = false })
 	end
 end
@@ -421,7 +451,7 @@ for x = ROAD_X0 + 1, ROAD_X1 - 2, 3 do
 end
 
 -- 차선: x 위치, 방향(+1 = +Z 쪽으로)
-local LANES = { { x = 65.5, dir = 1 }, { x = 72.5, dir = 1 }, { x = 79.5, dir = -1 }, { x = 86.5, dir = -1 } }
+local LANES = { { x = 85.5, dir = 1 }, { x = 92.5, dir = 1 }, { x = 99.5, dir = -1 }, { x = 106.5, dir = -1 } }
 local CAR_COLORS = { Color3.fromRGB(200, 40, 40), Color3.fromRGB(30, 60, 160), Color3.fromRGB(240, 240, 240), Color3.fromRGB(30, 30, 30), Color3.fromRGB(240, 190, 30), Color3.fromRGB(40, 140, 80), Color3.fromRGB(150, 150, 155) }
 local carFolder = Instance.new("Folder")
 carFolder.Name = "Cars"
@@ -574,9 +604,67 @@ do
 end
 
 -------------------------------------------------------------------
+-- 업그레이드 전문점 (매점 왼쪽)
+-------------------------------------------------------------------
+local UZ1, UZ0 = SZ0 - 6, SZ0 - 52
+local UDOOR0, UDOOR1 = UZ0 + 19, UZ0 + 27
+local upWall = Color3.fromRGB(28, 60, 80)
+box(SX0, -0.2, UZ0, SX1, 0.2, UZ1, { Color = Color3.fromRGB(60, 70, 80), Material = Enum.Material.DiamondPlate })
+box(SX0, 12, UZ0, SX1, 13, UZ1, { Color = Color3.fromRGB(20, 40, 55) })
+box(SX0, 0, UZ0, SX0 + 1, 12, UDOOR0, { Color = upWall })
+box(SX0, 0, UDOOR1, SX0 + 1, 12, UZ1, { Color = upWall })
+box(SX0, 9, UDOOR0, SX0 + 1, 12, UDOOR1, { Color = upWall })
+box(SX0, 3, UZ0 + 4, SX0 + 1.1, 8, UDOOR0 - 3, { Color = Color3.fromRGB(80, 170, 200), Material = Enum.Material.Glass, Transparency = 0.4 })
+box(SX0, 3, UDOOR1 + 3, SX0 + 1.1, 8, UZ1 - 4, { Color = Color3.fromRGB(80, 170, 200), Material = Enum.Material.Glass, Transparency = 0.4 })
+box(SX1 - 1, 0, UZ0, SX1, 12, UZ1, { Color = upWall })
+box(SX0, 0, UZ0, SX1, 12, UZ0 + 1, { Color = upWall })
+box(SX0, 0, UZ1 - 1, SX1, 12, UZ1, { Color = upWall })
+local upSign = box(SX0 - 0.6, 12.5, UZ0 + 5, SX0 - 0.2, 17, UZ1 - 5, { Color = Color3.fromRGB(10, 25, 35) })
+surfaceText(upSign, Enum.NormalId.Left, "업그레이드 전문점", Color3.fromRGB(90, 230, 255), Enum.Font.GothamBlack)
+do
+	local neon = box(SX0 - 0.7, 12.3, UZ0 + 5, SX0 - 0.5, 12.5, UZ1 - 5, { Color = Color3.fromRGB(60, 220, 255), Material = Enum.Material.Neon })
+	local l = Instance.new("PointLight")
+	l.Color = Color3.fromRGB(60, 220, 255)
+	l.Range = 20
+	l.Brightness = 2
+	l.Parent = neon
+	local lamp = part({ Size = Vector3.new(16, 0.3, 2), Position = Vector3.new((SX0 + SX1) / 2, 11.8, (UZ0 + UZ1) / 2), Color = Color3.fromRGB(200, 240, 255), Material = Enum.Material.Neon })
+	local l2 = Instance.new("PointLight")
+	l2.Range = 30
+	l2.Brightness = 1.3
+	l2.Parent = lamp
+	-- 작업대와 위로 향한 화살표 장식
+	local mx, mz = SX0 + 18, (UZ0 + UZ1) / 2
+	box(mx - 3, 0, mz - 2, mx + 3, 3, mz + 2, { Color = Color3.fromRGB(70, 70, 75), Material = Enum.Material.Metal })
+	box(mx - 2, 3, mz - 1.2, mx + 2, 4.2, mz + 1.2, { Color = Color3.fromRGB(50, 50, 55), Material = Enum.Material.Metal })
+	for i = 0, 2 do
+		local a = part({ Size = Vector3.new(0.4, 1.6, 1.6), Position = Vector3.new(SX1 - 2, 4 + i * 2.6, UZ0 + 8), Orientation = Vector3.new(45, 0, 0), Color = Color3.fromRGB(60, 220, 255), Material = Enum.Material.Neon })
+		a.Name = "Arrow"
+		local b = part({ Size = Vector3.new(0.4, 1.6, 1.6), Position = Vector3.new(SX1 - 2, 4 + i * 2.6, UZ1 - 8), Orientation = Vector3.new(45, 0, 0), Color = Color3.fromRGB(60, 220, 255), Material = Enum.Material.Neon })
+		b.Name = "Arrow"
+	end
+end
+local upCounter = box(SX1 - 12, 0, UDOOR0 - 2, SX1 - 8, 4, UDOOR1 + 2, { Name = "UpCounter", Color = Color3.fromRGB(40, 70, 90), Material = Enum.Material.Metal })
+local upPrompt = Instance.new("ProximityPrompt")
+upPrompt.ActionText = "업그레이드"
+upPrompt.ObjectText = "업그레이드 전문점"
+upPrompt.HoldDuration = 0
+upPrompt.MaxActivationDistance = 12
+upPrompt.RequiresLineOfSight = false
+upPrompt.Parent = upCounter
+do
+	local cx, cz = SX1 - 5, (UDOOR0 + UDOOR1) / 2
+	part({ Size = Vector3.new(2, 2.5, 1), Position = Vector3.new(cx, 1.25, cz), Color = Color3.fromRGB(60, 50, 40) })
+	part({ Size = Vector3.new(2, 2, 1), Position = Vector3.new(cx, 3.5, cz), Color = Color3.fromRGB(150, 110, 60) })
+	local h = part({ Size = Vector3.new(1.6, 1.6, 1.6), Position = Vector3.new(cx, 5.3, cz), Color = Color3.fromRGB(243, 210, 179), Shape = Enum.PartType.Ball })
+	part({ Size = Vector3.new(1.2, 0.5, 1.2), Position = Vector3.new(cx, 6.1, cz), Color = Color3.fromRGB(255, 200, 40) })
+	makeBillboard(h, "강화 장인", 2, Color3.fromRGB(150, 230, 255))
+end
+
+-------------------------------------------------------------------
 -- 뉴비 감독관
 -------------------------------------------------------------------
-local VIEW_RANGE = 34
+local VIEW_RANGE = 40
 local VIEW_ANGLE = math.rad(32)
 local NOOB_YELLOW = Color3.fromRGB(245, 205, 48)
 local NOOB_BLUE = Color3.fromRGB(13, 105, 172)
@@ -662,6 +750,19 @@ end
 local sessions = {} -- [player] = 시험 상태
 local inventory = {} -- [player] = { [id] = 개수 }
 local owned = {} -- [player] = { [기기 이름] = true }
+local proCount = {} -- [player] = 전문점 구매 횟수 (갈수록 2배)
+local gearLv = {} -- [player] = { [부정행위 이름] = 강화 단계 }
+local perks = {} -- [player] = { stealth = n, poker = n, quick = n }
+
+local function cheatFor(player, name)
+	return Shared.makeCheat(name, owned[player] and owned[player][name], gearLv[player] and gearLv[player][name] or 0)
+end
+local function perk(player, id)
+	return perks[player] and perks[player][id] or 0
+end
+local function sendUpgrades(player)
+	remote:FireClient(player, "Upgrades", { perks = perks[player] or {}, gear = gearLv[player] or {} })
+end
 
 local function moneyOf(player)
 	local ls = player:FindFirstChild("leaderstats")
@@ -883,6 +984,9 @@ Players.PlayerAdded:Connect(function(player)
 	ls.Parent = player
 	inventory[player] = {}
 	owned[player] = {}
+	proCount[player] = 0
+	gearLv[player] = {}
+	perks[player] = {}
 	player.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid")
 		hum.Died:Connect(function()
@@ -899,6 +1003,9 @@ Players.PlayerRemoving:Connect(function(player)
 	sessions[player] = nil
 	inventory[player] = nil
 	owned[player] = nil
+	proCount[player] = nil
+	gearLv[player] = nil
+	perks[player] = nil
 	if d then
 		d.occupant = nil
 	end
@@ -906,7 +1013,13 @@ end)
 
 proPrompt.Triggered:Connect(function(player)
 	local m = moneyOf(player)
-	remote:FireClient(player, "OpenProShop", m and m.Value or 0)
+	remote:FireClient(player, "OpenProShop", m and m.Value or 0, proCount[player] or 0)
+end)
+
+upPrompt.Triggered:Connect(function(player)
+	local m = moneyOf(player)
+	sendUpgrades(player)
+	remote:FireClient(player, "OpenUpShop", m and m.Value or 0)
 end)
 
 prompt.Triggered:Connect(function(player)
@@ -917,7 +1030,7 @@ end)
 -------------------------------------------------------------------
 -- 클라이언트 요청
 -------------------------------------------------------------------
-remote.OnServerEvent:Connect(function(player, action, arg)
+remote.OnServerEvent:Connect(function(player, action, arg, extra)
 	local s = sessions[player]
 	if action == "Start" then
 		if s or type(arg) ~= "string" then
@@ -966,7 +1079,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			cheating = false,
 			away = false,
 			nextEmptyCheck = 0,
-			cheat = Shared.makeCheat(cheatName, owned[player] and owned[player][cheatName]),
+			cheat = cheatFor(player, cheatName),
 			cheatShown = filterFor(player, cheatName),
 			desk = seat,
 		}
@@ -993,12 +1106,15 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		end
 		if type(arg) == "string" and arg ~= s.cheat.name then
 			local n = Shared.clip(arg, 20)
-			s.cheat = Shared.makeCheat(n, owned[player] and owned[player][n])
+			s.cheat = cheatFor(player, n)
 			s.cheatShown = filterFor(player, n)
 		end
 		s.cheating = true
-		s.cheatEnd = os.clock() + Shared.CHEAT_TIME
-		remote:FireClient(player, "CheatStart", Shared.CHEAT_TIME)
+		-- 같은 이름이어도 강화/정품 상태가 바뀌었을 수 있으니 다시 계산
+		s.cheat = cheatFor(player, s.cheat.name)
+		local dur = math.max(1, Shared.CHEAT_TIME - 0.4 * perk(player, "quick"))
+		s.cheatEnd = os.clock() + dur
+		remote:FireClient(player, "CheatStart", dur)
 	elseif action == "Leave" then
 		-- 몰래 자리 비우기
 		if not s or s.ended or s.away or s.cheating or freeze > 0 then
@@ -1009,7 +1125,7 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 		freePlayer(player, CFrame.new(p.X + 7, 3, p.Z))
 		local _, hum = getParts(player)
 		if hum then
-			hum.WalkSpeed = 14
+			hum.WalkSpeed = 14 + 3 * perk(player, "stealth")
 		end
 		remote:FireClient(player, "Away", true)
 	elseif action == "Return" then
@@ -1063,19 +1179,60 @@ remote.OnServerEvent:Connect(function(player, action, arg)
 			toast(player, "이미 가지고 있어요.")
 			return
 		end
-		local price = Shared.proPrice(name)
+		local price = Shared.doubled(Shared.proPrice(name), proCount[player])
 		if m.Value < price then
 			toast(player, "돈이 부족해요. (" .. price .. "원)")
 			return
 		end
 		m.Value = m.Value - price
 		owned[player][name] = true
+		proCount[player] = proCount[player] + 1
 		local list = {}
 		for k in pairs(owned[player]) do
 			table.insert(list, k)
 		end
-		remote:FireClient(player, "Owned", list, name)
+		remote:FireClient(player, "Owned", list, name, proCount[player])
 		toast(player, filterFor(player, name) .. " 구매 완료 (정품: 성공률 +25%, 적발 확률 -15%)")
+	elseif action == "Upgrade" then
+		local u = type(arg) == "string" and Shared.upgrade(arg)
+		local m = moneyOf(player)
+		local _, _, hrp = getParts(player)
+		if not u or not m or not hrp or not perks[player] then
+			return
+		end
+		if (hrp.Position - upCounter.Position).Magnitude > 18 then
+			toast(player, "업그레이드 전문점 계산대 가까이 가야 해요.")
+			return
+		end
+		local lv, target
+		if u.id == "gear" then
+			target = Shared.clip(type(extra) == "string" and extra or "", 20)
+			if target == "" then
+				toast(player, "왼쪽 목록에서 강화할 물건을 고르세요.")
+				return
+			end
+			lv = gearLv[player][target] or 0
+		else
+			lv = perks[player][u.id] or 0
+		end
+		if lv >= u.max then
+			toast(player, "이미 최대 단계예요.")
+			return
+		end
+		local price = Shared.doubled(u.base, lv)
+		if m.Value < price then
+			toast(player, "돈이 부족해요. (" .. price .. "원)")
+			return
+		end
+		m.Value = m.Value - price
+		if u.id == "gear" then
+			gearLv[player][target] = lv + 1
+			toast(player, filterFor(player, target) .. " +" .. (lv + 1) .. " 강화 성공")
+		else
+			perks[player][u.id] = lv + 1
+			toast(player, u.name .. " " .. (lv + 1) .. "단계")
+		end
+		sendUpgrades(player)
 	elseif action == "Eat" then
 		local item = type(arg) == "string" and Shared.shopItem(arg)
 		local inv = inventory[player]
@@ -1108,7 +1265,7 @@ end)
 -- 부정행위 끝났을 때
 local function finishCheat(player, s)
 	s.cheating = false
-	s.suspicion = math.min(100, s.suspicion + math.floor(s.cheat.risk / 3))
+	s.suspicion = math.min(100, s.suspicion + math.floor(s.cheat.risk / 3 * (1 - 0.2 * perk(player, "poker"))))
 	if math.random() * 100 < s.cheat.risk * (0.4 + s.suspicion / 150) then
 		task.spawn(catchAt, s.desk, player)
 		return
@@ -1150,7 +1307,7 @@ local function pickTarget()
 			return Vector3.new(p.X + 7, 4.5, p.Z - 3)
 		end
 	end
-	local xs = { -42, -28, -14, 0, 14, 28, 42 }
+	local xs = { -56, -42, -28, -14, 0, 14, 28, 42, 56 }
 	return Vector3.new(xs[math.random(1, #xs)], 4.5, math.random(ROOM_Z0 + 5, ROOM_Z1 - 8))
 end
 
@@ -1217,7 +1374,7 @@ RunService.Heartbeat:Connect(function(dt)
 			local want = math.atan2(-v.X, -v.Z)
 			local diff = (want - tState.look + math.pi) % (math.pi * 2) - math.pi
 			tState.look = tState.look + diff * math.min(1, dt * 6)
-			tState.pos = tState.pos + v.Unit * math.min(dist, 7 * dt)
+			tState.pos = tState.pos + v.Unit * math.min(dist, 9 * dt)
 		end
 	end
 	teacher:PivotTo(teacherCF())
@@ -1545,26 +1702,55 @@ local proButtons = {}
 for i, it in ipairs(Shared.PRO) do
 	local row = new("Frame", { Parent = proList, ZIndex = 33, LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(36, 32, 52) }, { corner(8) })
 	text({ Parent = row, ZIndex = 34, Text = it.name, Font = F.bold, TextSize = 13, TextColor3 = PRO_TEXT, Size = UDim2.new(1, -86, 0, 18), Position = UDim2.fromOffset(10, 7), TextTruncate = Enum.TextTruncate.AtEnd })
-	text({ Parent = row, ZIndex = 34, Text = it.price .. "원", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, -86, 0, 16), Position = UDim2.fromOffset(10, 27) })
+	local priceLabel = text({ Parent = row, ZIndex = 34, Text = it.price .. "원", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, -86, 0, 16), Position = UDim2.fromOffset(10, 27) })
 	local b = button({ Parent = row, ZIndex = 34, Text = "구매", TextSize = 13, BackgroundColor3 = PRO_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(66, 32), Position = UDim2.new(1, -8, 0.5, 0) })
 	b.MouseButton1Click:Connect(function()
 		if not owned[it.name] then
 			remote:FireServer("BuyPro", it.name)
 		end
 	end)
-	proButtons[it.name] = b
+	proButtons[it.name] = { button = b, price = priceLabel, base = it.price }
 end
+local proBought = 0 -- 전문점에서 산 횟수 (갈수록 2배)
 local function refreshProButtons()
-	for name, b in pairs(proButtons) do
+	for name, e in pairs(proButtons) do
 		local has = owned[name]
-		b.Text = has and "보유" or "구매"
-		b.BackgroundColor3 = has and Color3.fromRGB(70, 70, 85) or PRO_ACCENT
+		e.button.Text = has and "보유" or "구매"
+		e.button.BackgroundColor3 = has and Color3.fromRGB(70, 70, 85) or PRO_ACCENT
+		e.price.Text = has and "보유 중" or (Shared.doubled(e.base, proBought) .. "원")
 	end
 end
 proClose.MouseButton1Click:Connect(function()
 	proShop.Visible = false
 end)
 -- customBtn 은 cheats 가 정의된 뒤에 연결 (아래)
+
+-------------------------------------------------------------------
+-- 업그레이드 전문점 창
+-------------------------------------------------------------------
+local gearLv = {} -- [부정행위 이름] = 강화 단계
+local perkLv = {} -- stealth / poker / quick
+local UP_ACCENT = Color3.fromRGB(14, 140, 180)
+local upShop = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 30, Visible = false })
+local upBox = card({ Parent = upShop, ZIndex = 31, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(500, 400) })
+upBox.UIStroke.Color = UP_ACCENT
+pad(20).Parent = upBox
+text({ Parent = upBox, ZIndex = 32, Text = "업그레이드 전문점", Font = F.bold, TextSize = 20, Size = UDim2.new(1, 0, 0, 26) })
+text({ Parent = upBox, ZIndex = 32, Text = "단계가 오를 때마다 가격이 2배가 됩니다.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 16), Position = UDim2.fromOffset(0, 28) })
+local upMoney = text({ Parent = upBox, ZIndex = 32, Text = "", Font = F.mid, TextSize = 14, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -40, 0, 26) })
+local upClose = button({ Parent = upBox, ZIndex = 32, Text = "X", TextSize = 14, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(28, 26), Position = UDim2.fromScale(1, 0) }, false)
+upClose.MouseButton1Click:Connect(function()
+	upShop.Visible = false
+end)
+local upRows = {}
+for i, u in ipairs(Shared.UPGRADES) do
+	local row = new("Frame", { Parent = upBox, ZIndex = 32, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 70), Position = UDim2.fromOffset(0, 56 + (i - 1) * 78) }, { corner(8) })
+	local title = text({ Parent = row, ZIndex = 33, Text = u.name, Font = F.bold, TextSize = 15, Size = UDim2.new(1, -140, 0, 20), Position = UDim2.fromOffset(12, 8), TextTruncate = Enum.TextTruncate.AtEnd })
+	text({ Parent = row, ZIndex = 33, Text = u.desc, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, -140, 0, 16), Position = UDim2.fromOffset(12, 30) })
+	local info = text({ Parent = row, ZIndex = 33, Text = "", Font = F.mid, TextSize = 12, TextColor3 = UP_ACCENT, Size = UDim2.new(1, -140, 0, 16), Position = UDim2.fromOffset(12, 48) })
+	local b = button({ Parent = row, ZIndex = 33, Text = "강화", TextSize = 14, BackgroundColor3 = UP_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(110, 40), Position = UDim2.new(1, -12, 0.5, 0) })
+	upRows[u.id] = { title = title, info = info, button = b, def = u }
+end
 
 -------------------------------------------------------------------
 -- 알림
@@ -1774,6 +1960,7 @@ local retryBtn = button({ Parent = box, ZIndex = 42, Text = "확인", TextSize =
 -------------------------------------------------------------------
 local cheats = {}
 local selected = 1
+local refreshUpShop -- 아래에서 정의
 
 local function meter(parent, y, name, pct, color)
 	text({ Parent = parent, Text = name, TextSize = 11, TextColor3 = C.muted, Size = UDim2.new(0, 60, 0, 12), Position = UDim2.fromOffset(0, y) })
@@ -1819,13 +2006,41 @@ local function addCheat(name)
 			return
 		end
 	end
-	table.insert(cheats, 1, Shared.makeCheat(name, owned[name]))
+	table.insert(cheats, 1, Shared.makeCheat(name, owned[name], gearLv[name]))
 	selected = 1
 	renderCheats()
 end
 
 for _, n in ipairs({ "옆자리 친구", "손바닥 필기", "스마트워치" }) do
 	addCheat(n)
+end
+
+refreshUpShop = function()
+	local c = cheats[selected]
+	for id, r in pairs(upRows) do
+		local lv
+		if id == "gear" then
+			r.title.Text = "장비 강화: " .. (c and c.name or "-")
+			lv = c and (gearLv[c.name] or 0) or 0
+		else
+			lv = perkLv[id] or 0
+		end
+		if lv >= r.def.max then
+			r.info.Text = "Lv " .. lv .. " / " .. r.def.max .. "  (최대)"
+			r.button.Text = "최대"
+			r.button.BackgroundColor3 = Color3.fromRGB(150, 155, 165)
+		else
+			r.info.Text = "Lv " .. lv .. " / " .. r.def.max
+			r.button.Text = Shared.doubled(r.def.base, lv) .. "원"
+			r.button.BackgroundColor3 = UP_ACCENT
+		end
+	end
+end
+for id, r in pairs(upRows) do
+	r.button.MouseButton1Click:Connect(function()
+		local c = cheats[selected]
+		remote:FireServer("Upgrade", id, c and c.name or "")
+	end)
 end
 
 customBtn.MouseButton1Click:Connect(function()
@@ -2127,6 +2342,7 @@ local function showMoney(v)
 	moneyLabel.Text = v .. "원"
 	shopMoney.Text = "가진 돈 " .. v .. "원"
 	proMoney.Text = "가진 돈 " .. v .. "원"
+	upMoney.Text = "가진 돈 " .. v .. "원"
 end
 task.spawn(function()
 	local ls = player:WaitForChild("leaderstats")
@@ -2194,7 +2410,7 @@ local function showDomain(who)
 	end)
 end
 
-remote.OnClientEvent:Connect(function(action, data, extra)
+remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 	if action == "Question" then
 		if not inExam then
 			setExamMode(true)
@@ -2262,21 +2478,35 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 		showMoney(data)
 	elseif action == "OpenProShop" then
 		proMoney.Text = "가진 돈 " .. data .. "원"
+		proBought = extra or proBought
 		local c = cheats[selected]
 		if c then
-			customName.Text = c.name .. "  ·  " .. Shared.proPrice(c.name) .. "원"
+			customName.Text = c.name .. "  ·  " .. Shared.doubled(Shared.proPrice(c.name), proBought) .. "원"
 		else
 			customName.Text = "왼쪽에서 물건을 고르세요"
 		end
 		refreshProButtons()
 		proShop.Visible = true
+	elseif action == "Upgrades" then
+		perkLv = data.perks or {}
+		gearLv = data.gear or {}
+		for i, c in ipairs(cheats) do
+			cheats[i] = Shared.makeCheat(c.name, owned[c.name], gearLv[c.name])
+		end
+		renderCheats()
+		refreshUpShop()
+	elseif action == "OpenUpShop" then
+		upMoney.Text = "가진 돈 " .. data .. "원"
+		refreshUpShop()
+		upShop.Visible = true
 	elseif action == "Owned" then
+		proBought = extra2 or proBought
 		owned = {}
 		for _, n in ipairs(data) do
 			owned[n] = true
 		end
 		for i, c in ipairs(cheats) do
-			cheats[i] = Shared.makeCheat(c.name, owned[c.name])
+			cheats[i] = Shared.makeCheat(c.name, owned[c.name], gearLv[c.name])
 		end
 		if extra then
 			addCheat(extra)

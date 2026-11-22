@@ -23,6 +23,8 @@ Shared.SHOP = {
 }
 -- 부정행위 전문점: 세상의 전자기기
 Shared.PRO = {
+	{ name = "이어폰", price = 8000 },
+	{ name = "AI 안경", price = 45000 },
 	{ name = "스마트워치", price = 15000 },
 	{ name = "스마트폰", price = 30000 },
 	{ name = "무선 이어폰", price = 12000 },
@@ -62,6 +64,26 @@ function Shared.proPrice(name)
 	end
 	-- 목록에 없는 물건은 맞춤 제작
 	return 20000 + (Shared.hash(name) % 60) * 1000
+end
+
+-- 갈수록 2배: n번째 구매는 기본 가격 × 2^n
+function Shared.doubled(base, n)
+	return base * 2 ^ (n or 0)
+end
+
+-- 업그레이드 전문점
+Shared.UPGRADES = {
+	{ id = "gear", name = "장비 강화", desc = "선택한 부정행위 성공률 +8%, 적발 확률 -5%", base = 5000, max = 8 },
+	{ id = "stealth", name = "살금살금", desc = "몰래 나갔을 때 이동 속도 +3", base = 8000, max = 5 },
+	{ id = "poker", name = "포커페이스", desc = "부정행위할 때 오르는 의심도 -20%", base = 10000, max = 4 },
+	{ id = "quick", name = "빠른 손", desc = "부정행위 시간 -0.4초", base = 12000, max = 5 },
+}
+function Shared.upgrade(id)
+	for _, u in ipairs(Shared.UPGRADES) do
+		if u.id == id then
+			return u
+		end
+	end
 end
 
 function Shared.shopItem(id)
@@ -121,7 +143,7 @@ function Shared.hash(str)
 end
 
 -- 적은 아무거나 → 부정행위 능력치
-function Shared.makeCheat(name, pro)
+function Shared.makeCheat(name, pro, level)
 	local r = Random.new(Shared.hash(name))
 	local copy = false
 	for _, w in ipairs(COPY_WORDS) do
@@ -144,6 +166,14 @@ function Shared.makeCheat(name, pro)
 		cheat.type = "전문점 정품"
 		cheat.success = math.min(99, cheat.success + 25)
 		cheat.risk = math.max(5, cheat.risk - 15)
+	end
+	-- 업그레이드 전문점 강화 단계
+	level = level or 0
+	if level > 0 then
+		cheat.level = level
+		cheat.type = cheat.type .. " +" .. level
+		cheat.success = math.min(99, cheat.success + 8 * level)
+		cheat.risk = math.max(3, cheat.risk - 5 * level)
 	end
 	return cheat
 end

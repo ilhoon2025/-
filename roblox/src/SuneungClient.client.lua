@@ -267,26 +267,55 @@ local proButtons = {}
 for i, it in ipairs(Shared.PRO) do
 	local row = new("Frame", { Parent = proList, ZIndex = 33, LayoutOrder = i, BackgroundColor3 = Color3.fromRGB(36, 32, 52) }, { corner(8) })
 	text({ Parent = row, ZIndex = 34, Text = it.name, Font = F.bold, TextSize = 13, TextColor3 = PRO_TEXT, Size = UDim2.new(1, -86, 0, 18), Position = UDim2.fromOffset(10, 7), TextTruncate = Enum.TextTruncate.AtEnd })
-	text({ Parent = row, ZIndex = 34, Text = it.price .. "원", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, -86, 0, 16), Position = UDim2.fromOffset(10, 27) })
+	local priceLabel = text({ Parent = row, ZIndex = 34, Text = it.price .. "원", TextSize = 12, TextColor3 = PRO_MUTED, Size = UDim2.new(1, -86, 0, 16), Position = UDim2.fromOffset(10, 27) })
 	local b = button({ Parent = row, ZIndex = 34, Text = "구매", TextSize = 13, BackgroundColor3 = PRO_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(66, 32), Position = UDim2.new(1, -8, 0.5, 0) })
 	b.MouseButton1Click:Connect(function()
 		if not owned[it.name] then
 			remote:FireServer("BuyPro", it.name)
 		end
 	end)
-	proButtons[it.name] = b
+	proButtons[it.name] = { button = b, price = priceLabel, base = it.price }
 end
+local proBought = 0 -- 전문점에서 산 횟수 (갈수록 2배)
 local function refreshProButtons()
-	for name, b in pairs(proButtons) do
+	for name, e in pairs(proButtons) do
 		local has = owned[name]
-		b.Text = has and "보유" or "구매"
-		b.BackgroundColor3 = has and Color3.fromRGB(70, 70, 85) or PRO_ACCENT
+		e.button.Text = has and "보유" or "구매"
+		e.button.BackgroundColor3 = has and Color3.fromRGB(70, 70, 85) or PRO_ACCENT
+		e.price.Text = has and "보유 중" or (Shared.doubled(e.base, proBought) .. "원")
 	end
 end
 proClose.MouseButton1Click:Connect(function()
 	proShop.Visible = false
 end)
 -- customBtn 은 cheats 가 정의된 뒤에 연결 (아래)
+
+-------------------------------------------------------------------
+-- 업그레이드 전문점 창
+-------------------------------------------------------------------
+local gearLv = {} -- [부정행위 이름] = 강화 단계
+local perkLv = {} -- stealth / poker / quick
+local UP_ACCENT = Color3.fromRGB(14, 140, 180)
+local upShop = new("Frame", { Parent = root, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), ZIndex = 30, Visible = false })
+local upBox = card({ Parent = upShop, ZIndex = 31, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(500, 400) })
+upBox.UIStroke.Color = UP_ACCENT
+pad(20).Parent = upBox
+text({ Parent = upBox, ZIndex = 32, Text = "업그레이드 전문점", Font = F.bold, TextSize = 20, Size = UDim2.new(1, 0, 0, 26) })
+text({ Parent = upBox, ZIndex = 32, Text = "단계가 오를 때마다 가격이 2배가 됩니다.", TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, 0, 0, 16), Position = UDim2.fromOffset(0, 28) })
+local upMoney = text({ Parent = upBox, ZIndex = 32, Text = "", Font = F.mid, TextSize = 14, TextColor3 = C.muted, TextXAlignment = Enum.TextXAlignment.Right, Size = UDim2.new(1, -40, 0, 26) })
+local upClose = button({ Parent = upBox, ZIndex = 32, Text = "X", TextSize = 14, AnchorPoint = Vector2.new(1, 0), Size = UDim2.fromOffset(28, 26), Position = UDim2.fromScale(1, 0) }, false)
+upClose.MouseButton1Click:Connect(function()
+	upShop.Visible = false
+end)
+local upRows = {}
+for i, u in ipairs(Shared.UPGRADES) do
+	local row = new("Frame", { Parent = upBox, ZIndex = 32, BackgroundColor3 = C.sub, Size = UDim2.new(1, 0, 0, 70), Position = UDim2.fromOffset(0, 56 + (i - 1) * 78) }, { corner(8) })
+	local title = text({ Parent = row, ZIndex = 33, Text = u.name, Font = F.bold, TextSize = 15, Size = UDim2.new(1, -140, 0, 20), Position = UDim2.fromOffset(12, 8), TextTruncate = Enum.TextTruncate.AtEnd })
+	text({ Parent = row, ZIndex = 33, Text = u.desc, TextSize = 12, TextColor3 = C.muted, Size = UDim2.new(1, -140, 0, 16), Position = UDim2.fromOffset(12, 30) })
+	local info = text({ Parent = row, ZIndex = 33, Text = "", Font = F.mid, TextSize = 12, TextColor3 = UP_ACCENT, Size = UDim2.new(1, -140, 0, 16), Position = UDim2.fromOffset(12, 48) })
+	local b = button({ Parent = row, ZIndex = 33, Text = "강화", TextSize = 14, BackgroundColor3 = UP_ACCENT, AnchorPoint = Vector2.new(1, 0.5), Size = UDim2.fromOffset(110, 40), Position = UDim2.new(1, -12, 0.5, 0) })
+	upRows[u.id] = { title = title, info = info, button = b, def = u }
+end
 
 -------------------------------------------------------------------
 -- 알림
@@ -496,6 +525,7 @@ local retryBtn = button({ Parent = box, ZIndex = 42, Text = "확인", TextSize =
 -------------------------------------------------------------------
 local cheats = {}
 local selected = 1
+local refreshUpShop -- 아래에서 정의
 
 local function meter(parent, y, name, pct, color)
 	text({ Parent = parent, Text = name, TextSize = 11, TextColor3 = C.muted, Size = UDim2.new(0, 60, 0, 12), Position = UDim2.fromOffset(0, y) })
@@ -541,13 +571,41 @@ local function addCheat(name)
 			return
 		end
 	end
-	table.insert(cheats, 1, Shared.makeCheat(name, owned[name]))
+	table.insert(cheats, 1, Shared.makeCheat(name, owned[name], gearLv[name]))
 	selected = 1
 	renderCheats()
 end
 
 for _, n in ipairs({ "옆자리 친구", "손바닥 필기", "스마트워치" }) do
 	addCheat(n)
+end
+
+refreshUpShop = function()
+	local c = cheats[selected]
+	for id, r in pairs(upRows) do
+		local lv
+		if id == "gear" then
+			r.title.Text = "장비 강화: " .. (c and c.name or "-")
+			lv = c and (gearLv[c.name] or 0) or 0
+		else
+			lv = perkLv[id] or 0
+		end
+		if lv >= r.def.max then
+			r.info.Text = "Lv " .. lv .. " / " .. r.def.max .. "  (최대)"
+			r.button.Text = "최대"
+			r.button.BackgroundColor3 = Color3.fromRGB(150, 155, 165)
+		else
+			r.info.Text = "Lv " .. lv .. " / " .. r.def.max
+			r.button.Text = Shared.doubled(r.def.base, lv) .. "원"
+			r.button.BackgroundColor3 = UP_ACCENT
+		end
+	end
+end
+for id, r in pairs(upRows) do
+	r.button.MouseButton1Click:Connect(function()
+		local c = cheats[selected]
+		remote:FireServer("Upgrade", id, c and c.name or "")
+	end)
 end
 
 customBtn.MouseButton1Click:Connect(function()
@@ -849,6 +907,7 @@ local function showMoney(v)
 	moneyLabel.Text = v .. "원"
 	shopMoney.Text = "가진 돈 " .. v .. "원"
 	proMoney.Text = "가진 돈 " .. v .. "원"
+	upMoney.Text = "가진 돈 " .. v .. "원"
 end
 task.spawn(function()
 	local ls = player:WaitForChild("leaderstats")
@@ -916,7 +975,7 @@ local function showDomain(who)
 	end)
 end
 
-remote.OnClientEvent:Connect(function(action, data, extra)
+remote.OnClientEvent:Connect(function(action, data, extra, extra2)
 	if action == "Question" then
 		if not inExam then
 			setExamMode(true)
@@ -984,21 +1043,35 @@ remote.OnClientEvent:Connect(function(action, data, extra)
 		showMoney(data)
 	elseif action == "OpenProShop" then
 		proMoney.Text = "가진 돈 " .. data .. "원"
+		proBought = extra or proBought
 		local c = cheats[selected]
 		if c then
-			customName.Text = c.name .. "  ·  " .. Shared.proPrice(c.name) .. "원"
+			customName.Text = c.name .. "  ·  " .. Shared.doubled(Shared.proPrice(c.name), proBought) .. "원"
 		else
 			customName.Text = "왼쪽에서 물건을 고르세요"
 		end
 		refreshProButtons()
 		proShop.Visible = true
+	elseif action == "Upgrades" then
+		perkLv = data.perks or {}
+		gearLv = data.gear or {}
+		for i, c in ipairs(cheats) do
+			cheats[i] = Shared.makeCheat(c.name, owned[c.name], gearLv[c.name])
+		end
+		renderCheats()
+		refreshUpShop()
+	elseif action == "OpenUpShop" then
+		upMoney.Text = "가진 돈 " .. data .. "원"
+		refreshUpShop()
+		upShop.Visible = true
 	elseif action == "Owned" then
+		proBought = extra2 or proBought
 		owned = {}
 		for _, n in ipairs(data) do
 			owned[n] = true
 		end
 		for i, c in ipairs(cheats) do
-			cheats[i] = Shared.makeCheat(c.name, owned[c.name])
+			cheats[i] = Shared.makeCheat(c.name, owned[c.name], gearLv[c.name])
 		end
 		if extra then
 			addCheat(extra)
