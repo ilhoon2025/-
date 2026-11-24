@@ -14,20 +14,26 @@ Shared.RARITY = {
 	{ name = "전설", color = Color3.fromRGB(255, 180, 30), weight = 2, pts = 25 },
 }
 
--- shape: 모양 종류 (서버가 이 이름으로 모델을 만듦)
+-- 실제 말랑이 장난감 모양 (shape 이름으로 서버가 모델을 만듦)
 Shared.SQUISHIES = {
-	{ id = "mochi", name = "모찌", rarity = 1, shape = "ball", color = Color3.fromRGB(250, 248, 240) },
-	{ id = "strawberry", name = "딸기모찌", rarity = 1, shape = "leafball", color = Color3.fromRGB(255, 170, 190), leaf = Color3.fromRGB(90, 190, 90) },
-	{ id = "bread", name = "식빵", rarity = 1, shape = "bread", color = Color3.fromRGB(250, 225, 170) },
-	{ id = "pudding", name = "푸딩", rarity = 1, shape = "pudding", color = Color3.fromRGB(255, 225, 110) },
-	{ id = "cloud", name = "구름", rarity = 2, shape = "cloud", color = Color3.fromRGB(240, 248, 255) },
-	{ id = "cat", name = "고양이", rarity = 2, shape = "cat", color = Color3.fromRGB(200, 200, 205) },
-	{ id = "peach", name = "복숭아", rarity = 2, shape = "leafball", color = Color3.fromRGB(255, 200, 170), leaf = Color3.fromRGB(110, 170, 80) },
-	{ id = "jelly", name = "젤리 친구", rarity = 3, shape = "buddy", color = Color3.fromRGB(120, 230, 160), glass = true },
-	{ id = "rainbow", name = "무지개 모찌", rarity = 3, shape = "rainbow", color = Color3.fromRGB(255, 120, 120) },
-	{ id = "gold", name = "황금 모찌", rarity = 4, shape = "ball", color = Color3.fromRGB(255, 200, 50), neon = true },
-	{ id = "space", name = "우주 말랑이", rarity = 4, shape = "space", color = Color3.fromRGB(120, 70, 220), neon = true },
+	{ id = "mochi", name = "찹쌀떡 모찌", rarity = 1, shape = "mochi", color = Color3.fromRGB(250, 248, 242) },
+	{ id = "tofu", name = "두부 말랑이", rarity = 1, shape = "tofu", color = Color3.fromRGB(248, 246, 236) },
+	{ id = "bread", name = "식빵 말랑이", rarity = 1, shape = "bread", color = Color3.fromRGB(250, 232, 190) },
+	{ id = "egg", name = "계란후라이 말랑이", rarity = 1, shape = "egg", color = Color3.fromRGB(255, 255, 250) },
+	{ id = "macaron", name = "마카롱 말랑이", rarity = 2, shape = "macaron", color = Color3.fromRGB(255, 185, 205) },
+	{ id = "cheese", name = "치즈 말랑이", rarity = 2, shape = "cheese", color = Color3.fromRGB(255, 215, 90) },
+	{ id = "jelly", name = "젤리 큐브", rarity = 2, shape = "jelly", color = Color3.fromRGB(120, 220, 170) },
+	{ id = "fishbread", name = "붕어빵 말랑이", rarity = 3, shape = "fish", color = Color3.fromRGB(215, 150, 70) },
+	{ id = "meshball", name = "메쉬볼", rarity = 3, shape = "mesh", color = Color3.fromRGB(150, 200, 255) },
+	{ id = "waterball", name = "물방울 말랑이", rarity = 3, shape = "water", color = Color3.fromRGB(180, 230, 255) },
+	{ id = "goldfish", name = "황금 붕어빵", rarity = 4, shape = "fish", color = Color3.fromRGB(255, 200, 50), neon = true },
+	{ id = "glitter", name = "반짝이 슬라임볼", rarity = 4, shape = "glitter", color = Color3.fromRGB(190, 120, 255) },
 }
+
+-- 소리: sounds 폴더의 mp3를 Roblox에 올린 뒤 오디오 ID로 바꾸면 더 말랑한 소리가 나요
+-- (0 이면 Roblox 기본 소리를 대신 씀)
+Shared.SQUISH_SOUND = "rbxassetid://0" -- squish.mp3
+Shared.POP_SOUND = "rbxassetid://0" -- pop.mp3
 
 function Shared.byId(id)
 	for _, s in ipairs(Shared.SQUISHIES) do
@@ -159,79 +165,145 @@ local function billboard(adornee, str, offsetY, color, w)
 end
 
 -------------------------------------------------------------------
--- 말랑이 모델 만들기 (s = 크기 배율, 앞쪽 = -Z)
+-- 말랑이 모델 만들기: 실제 말랑이 장난감처럼 (s = 크기 배율, 앞쪽 = -Z)
 -------------------------------------------------------------------
-local function addFace(m, body, s)
-	local sz = body.Size
-	local front = body.CFrame * CFrame.new(0, sz.Y * 0.05, -sz.Z * 0.46)
-	local black = Color3.fromRGB(40, 35, 40)
-	for _, x in ipairs({ -1, 1 }) do
-		blob(m, Vector3.new(0.18, 0.24, 0.1) * s, front * CFrame.new(x * sz.X * 0.17, 0, 0), black)
-		blob(m, Vector3.new(0.26, 0.14, 0.06) * s, front * CFrame.new(x * sz.X * 0.3, -sz.Y * 0.1, 0.02), Color3.fromRGB(255, 150, 170))
+local function blockPart(m, size, cf, color, extra)
+	local p = part({ Parent = m, Size = size, CFrame = cf, Color = color, CanCollide = false })
+	if extra then
+		for k, v in pairs(extra) do
+			p[k] = v
+		end
 	end
-	blob(m, Vector3.new(0.16, 0.08, 0.06) * s, front * CFrame.new(0, -sz.Y * 0.1, 0), black)
+	return p
 end
+-- 테이프 말랑이 특유의 살짝 반짝이는 광택
+local TAPE = { Reflectance = 0.06 }
 
 local function buildSquishy(def, s, at)
 	local m = Instance.new("Model")
 	m.Name = "Squishy"
 	m:SetAttribute("SquishyId", def.id)
 	local base = CFrame.new(at)
-	local mat = def.neon and Enum.Material.Neon or (def.glass and Enum.Material.Glass or Enum.Material.SmoothPlastic)
-	local extra = { Material = mat, Transparency = def.glass and 0.25 or 0 }
-	local body
-	local shape = def.shape
-	if shape == "ball" or shape == "leafball" or shape == "space" then
-		body = blob(m, Vector3.new(2.2, 1.7, 2.2) * s, base * CFrame.new(0, 0.85 * s, 0), def.color, extra)
-		if shape == "leafball" then
-			blob(m, Vector3.new(0.9, 0.25, 0.5) * s, base * CFrame.new(0, 1.75 * s, 0) * CFrame.Angles(0, 0, 0.3), def.leaf)
-		elseif shape == "space" then
-			for i = 1, 6 do
-				local a = i * 1.05
-				blob(m, Vector3.new(0.18, 0.18, 0.18) * s, base * CFrame.new(math.cos(a) * 0.9 * s, (0.6 + (i % 3) * 0.35) * s, math.sin(a) * 0.9 * s), Color3.fromRGB(255, 255, 200), { Material = Enum.Material.Neon })
-			end
-		end
-	elseif shape == "bread" then
-		body = part({ Parent = m, Size = Vector3.new(2.2, 1.6, 1.4) * s, CFrame = base * CFrame.new(0, 0.8 * s, 0), Color = def.color, CanCollide = false })
-		blob(m, Vector3.new(2.4, 1.0, 1.5) * s, base * CFrame.new(0, 1.6 * s, 0), Color3.fromRGB(200, 140, 80))
-		blob(m, Vector3.new(2.1, 0.85, 1.42) * s, base * CFrame.new(0, 1.55 * s, 0), def.color)
-	elseif shape == "pudding" then
-		body = part({ Parent = m, Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 2.2, 2.2) * s, CFrame = base * CFrame.new(0, 0.8 * s, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = def.color, CanCollide = false })
-		blob(m, Vector3.new(2.0, 0.6, 2.0) * s, base * CFrame.new(0, 1.65 * s, 0), Color3.fromRGB(140, 80, 30))
-		body = blob(m, Vector3.new(2.25, 1.5, 2.25) * s, base * CFrame.new(0, 0.8 * s, 0), def.color) -- 얼굴 붙일 앞면
-	elseif shape == "cloud" then
-		body = blob(m, Vector3.new(1.8, 1.5, 1.8) * s, base * CFrame.new(0, 0.9 * s, 0), def.color)
-		blob(m, Vector3.new(1.3, 1.1, 1.4) * s, base * CFrame.new(-1.1 * s, 0.6 * s, 0.1 * s), def.color)
-		blob(m, Vector3.new(1.3, 1.1, 1.4) * s, base * CFrame.new(1.1 * s, 0.6 * s, 0.1 * s), def.color)
-	elseif shape == "cat" then
-		body = blob(m, Vector3.new(2.2, 1.8, 2.0) * s, base * CFrame.new(0, 0.9 * s, 0), def.color)
-		for _, x in ipairs({ -0.65, 0.65 }) do
-			local ear = Instance.new("WedgePart")
-			ear.Anchored = true
-			ear.CanCollide = false
-			ear.Color = def.color
-			ear.Material = Enum.Material.SmoothPlastic
-			ear.Size = Vector3.new(0.3, 0.6, 0.6) * s
-			ear.CFrame = base * CFrame.new(x * s, 1.85 * s, 0) * CFrame.Angles(0, math.rad(90), 0)
-			ear.Parent = m
-		end
-	elseif shape == "buddy" then
-		body = blob(m, Vector3.new(1.8, 1.9, 1.6) * s, base * CFrame.new(0, 0.95 * s, 0), def.color, extra)
-		blob(m, Vector3.new(0.6, 0.6, 0.6) * s, base * CFrame.new(-0.6 * s, 2.0 * s, 0), def.color, extra)
-		blob(m, Vector3.new(0.6, 0.6, 0.6) * s, base * CFrame.new(0.6 * s, 2.0 * s, 0), def.color, extra)
-	elseif shape == "rainbow" then
-		local cols = { Color3.fromRGB(255, 120, 120), Color3.fromRGB(255, 200, 110), Color3.fromRGB(150, 230, 130), Color3.fromRGB(120, 190, 255), Color3.fromRGB(190, 140, 255) }
-		for i, c in ipairs(cols) do
-			local b = blob(m, Vector3.new(2.3 - i * 0.18, 0.55, 2.3 - i * 0.18) * s, base * CFrame.new(0, (0.25 + (i - 1) * 0.42) * s, 0), c)
-			if i == 2 then
-				body = b
-			end
-		end
-		body.Size = Vector3.new(body.Size.X, body.Size.Y, body.Size.Z)
+	local function B(x, y, z)
+		return base * CFrame.new(x * s, y * s, z * s)
 	end
-	addFace(m, body, s)
+	local shape = def.shape
+	local c = def.color
+	local body
+	if shape == "mochi" then
+		-- 납작하고 둥근 찹쌀떡 + 하얀 전분 가루
+		body = blob(m, Vector3.new(2.4, 1.25, 2.4) * s, B(0, 0.62, 0), c)
+		for i = 1, 10 do
+			local a = i * 2.39
+			local r = 0.3 + (i % 4) * 0.22
+			blob(m, Vector3.new(0.12, 0.05, 0.12) * s, B(math.cos(a) * r, 1.22 - r * 0.25, math.sin(a) * r), Color3.new(1, 1, 1))
+		end
+	elseif shape == "tofu" then
+		-- 하얀 두부 블록 + 위쪽 테이프 광택
+		body = blockPart(m, Vector3.new(2.2, 1.4, 2.2) * s, B(0, 0.7, 0), c, TAPE)
+		blockPart(m, Vector3.new(1.6, 0.04, 1.6) * s, B(-0.1, 1.42, -0.1), Color3.new(1, 1, 1), { Transparency = 0.55, Material = Enum.Material.Neon })
+	elseif shape == "bread" then
+		-- 갈색 테두리(빵 껍질) + 노란 속살 단면 + 둥근 윗부분
+		body = blockPart(m, Vector3.new(2.3, 1.5, 1.4) * s, B(0, 0.75, 0), Color3.fromRGB(195, 130, 65), TAPE)
+		blob(m, Vector3.new(2.5, 1.1, 1.38) * s, B(0, 1.5, 0), Color3.fromRGB(195, 130, 65), TAPE)
+		for _, z in ipairs({ -0.71, 0.71 }) do
+			blockPart(m, Vector3.new(2.05, 1.3, 0.04) * s, B(0, 0.78, z), c)
+			blob(m, Vector3.new(2.25, 0.9, 0.04) * s, B(0, 1.5, z), c)
+		end
+	elseif shape == "egg" then
+		-- 울퉁불퉁한 흰자 + 볼록한 노른자
+		body = blob(m, Vector3.new(2.6, 0.45, 2.2) * s, B(0, 0.22, 0), c)
+		blob(m, Vector3.new(1.4, 0.42, 1.5) * s, B(0.8, 0.2, 0.5), c)
+		blob(m, Vector3.new(1.2, 0.4, 1.2) * s, B(-0.9, 0.2, -0.5), c)
+		blob(m, Vector3.new(1.0, 0.75, 1.0) * s, B(0.1, 0.55, -0.1), Color3.fromRGB(255, 175, 30), TAPE)
+	elseif shape == "macaron" then
+		-- 위아래 꼬끄 + 가운데 크림 + 꼬끄 아래 주름(피에)
+		local cyl = CFrame.Angles(0, 0, math.rad(90))
+		blockPart(m, Vector3.new(0.6, 2.3, 2.3) * s, B(0, 0.3, 0) * cyl, c, { Shape = Enum.PartType.Cylinder })
+		blockPart(m, Vector3.new(0.18, 2.42, 2.42) * s, B(0, 0.62, 0) * cyl, c:Lerp(Color3.new(1, 1, 1), 0.3), { Shape = Enum.PartType.Cylinder })
+		blockPart(m, Vector3.new(0.45, 2.05, 2.05) * s, B(0, 0.92, 0) * cyl, Color3.fromRGB(255, 250, 240), { Shape = Enum.PartType.Cylinder })
+		blockPart(m, Vector3.new(0.18, 2.42, 2.42) * s, B(0, 1.22, 0) * cyl, c:Lerp(Color3.new(1, 1, 1), 0.3), { Shape = Enum.PartType.Cylinder })
+		body = blob(m, Vector3.new(2.3, 0.75, 2.3) * s, B(0, 1.5, 0), c)
+	elseif shape == "cheese" then
+		-- 삼각 치즈 조각 + 구멍
+		local w = Instance.new("WedgePart")
+		w.Anchored = true
+		w.CanCollide = false
+		w.Material = Enum.Material.SmoothPlastic
+		w.Color = c
+		w.Size = Vector3.new(1.6, 1.4, 2.6) * s
+		w.CFrame = B(0, 0.7, 0)
+		w.Parent = m
+		body = w
+		local holeC = Color3.fromRGB(230, 180, 50)
+		for _, h in ipairs({ { -0.81, 0.4, 0.5, 0.45 }, { -0.81, 0.9, -0.3, 0.3 }, { 0.81, 0.35, 0.8, 0.35 }, { 0.81, 0.5, -0.5, 0.4 } }) do
+			blob(m, Vector3.new(0.05, h[4], h[4]) * s, B(h[1], h[2], h[3]), holeC)
+		end
+	elseif shape == "jelly" then
+		-- 투명한 젤리 큐브 + 안쪽 진한 색
+		body = blockPart(m, Vector3.new(2, 2, 2) * s, B(0, 1, 0), c, { Material = Enum.Material.Glass, Transparency = 0.35 })
+		blockPart(m, Vector3.new(1.2, 1.2, 1.2) * s, B(0, 1, 0), c:Lerp(Color3.new(0, 0.3, 0.2), 0.3), { Material = Enum.Material.Glass, Transparency = 0.2 })
+	elseif shape == "fish" then
+		-- 붕어빵: 길쭉한 몸통 + 꼬리 + 비늘 무늬 + 눈
+		local extra = def.neon and { Material = Enum.Material.Neon } or TAPE
+		body = blob(m, Vector3.new(3.0, 1.3, 1.5) * s, B(0, 0.65, 0), c, extra)
+		for _, y in ipairs({ 0.35, 0.95 }) do
+			local t = Instance.new("WedgePart")
+			t.Anchored = true
+			t.CanCollide = false
+			t.Material = def.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
+			t.Color = c
+			t.Size = Vector3.new(0.5, 0.7, 1.0) * s
+			t.CFrame = B(1.75, y, 0) * CFrame.Angles(y < 0.5 and math.pi or 0, math.rad(90), 0)
+			t.Parent = m
+		end
+		local dark = c:Lerp(Color3.new(0.3, 0.15, 0), 0.35)
+		for i = -1, 1 do
+			for _, z in ipairs({ -0.74, 0.74 }) do
+				blob(m, Vector3.new(0.35, 0.5, 0.04) * s, B(i * 0.45 + 0.2, 0.7, z), dark)
+			end
+		end
+		for _, z in ipairs({ -0.7, 0.7 }) do
+			blob(m, Vector3.new(0.2, 0.2, 0.05) * s, B(-1.05, 0.85, z), Color3.fromRGB(60, 35, 20))
+		end
+	elseif shape == "mesh" then
+		-- 메쉬볼: 말랑한 공 + 그물 사이로 튀어나온 구슬들
+		body = blob(m, Vector3.new(2.2, 2.2, 2.2) * s, B(0, 1.1, 0), c, { Material = Enum.Material.Fabric })
+		local n = 34
+		local beads = { Color3.fromRGB(255, 150, 200), Color3.fromRGB(255, 240, 150), Color3.fromRGB(180, 255, 200), Color3.fromRGB(255, 255, 255) }
+		for i = 0, n - 1 do
+			local y = 1 - (i + 0.5) / n * 2
+			local r = math.sqrt(1 - y * y)
+			local a = i * 2.39996
+			local dir = Vector3.new(math.cos(a) * r, y, math.sin(a) * r)
+			local p = blob(m, Vector3.new(0.36, 0.36, 0.36) * s, base * CFrame.new(Vector3.new(0, 1.1 * s, 0) + dir * 1.05 * s), beads[i % #beads + 1], { Material = Enum.Material.Glass, Transparency = 0.15 })
+			p.Name = "Bead"
+		end
+	elseif shape == "water" then
+		-- 물방울 말랑이: 투명한 공 + 안쪽 반짝이
+		body = blob(m, Vector3.new(2.3, 2.1, 2.3) * s, B(0, 1.05, 0), c, { Material = Enum.Material.Glass, Transparency = 0.45 })
+		for i = 1, 14 do
+			local a = i * 2.39996
+			local r = 0.2 + (i % 5) * 0.13
+			blob(m, Vector3.new(0.12, 0.12, 0.12) * s, B(math.cos(a) * r, 0.5 + (i % 7) * 0.15, math.sin(a) * r), Color3.fromRGB(255, 255, 255), { Material = Enum.Material.Neon })
+		end
+	elseif shape == "glitter" then
+		-- 반짝이 슬라임볼: 보랏빛 공 + 빛나는 반짝이 가루
+		body = blob(m, Vector3.new(2.3, 2.1, 2.3) * s, B(0, 1.05, 0), c, { Material = Enum.Material.Glass, Transparency = 0.15 })
+		local gl = { Color3.fromRGB(255, 220, 255), Color3.fromRGB(180, 240, 255), Color3.fromRGB(255, 250, 180) }
+		for i = 1, 24 do
+			local y = 1 - (i + 0.5) / 24 * 2
+			local r = math.sqrt(1 - y * y)
+			local a = i * 2.39996
+			blob(m, Vector3.new(0.14, 0.14, 0.14) * s, base * CFrame.new(Vector3.new(math.cos(a) * r * 1.0, 1.05 + y * 0.92, math.sin(a) * r * 1.0) * s), gl[i % 3 + 1], { Material = Enum.Material.Neon })
+		end
+		local l = Instance.new("PointLight")
+		l.Color = c
+		l.Range = 8 * s
+		l.Brightness = 1
+		l.Parent = body
+	end
 	body.Name = "Body"
-	-- 찌그러질 때 기준이 되는 바닥 중심
 	local root = part({ Parent = m, Name = "Root", Size = Vector3.new(0.2, 0.2, 0.2), CFrame = base, Transparency = 1, CanCollide = false, CanQuery = false })
 	m.PrimaryPart = root
 	local click = Instance.new("ClickDetector")
@@ -360,7 +432,7 @@ for ti, pos in ipairs(TABLE_SPOTS) do
 		end
 	end
 	for k = 0, 5 do
-		local def = Shared.SQUISHIES[((ti - 1) * 6 + k) % 7 + 1]
+		local def = Shared.SQUISHIES[((ti - 1) * 6 + k) % 7 + 1] -- 일반·희귀 말랑이
 		local at = pos + Vector3.new(-6.5 + (k % 3) * 6.5, 3.5, k < 3 and -2.5 or 2.5)
 		local m, click = buildSquishy(def, 1.2, at)
 		m:PivotTo(CFrame.new(at) * CFrame.Angles(0, math.pi * (pos.Z > 0 and 0 or 1), 0))
@@ -528,6 +600,38 @@ local function startSquish(model)
 		if parts then
 			anims[model] = { t = 0, parts = parts }
 		end
+	end
+end
+
+-------------------------------------------------------------------
+-- 소리 (업로드한 ID가 없으면 Roblox 기본 소리)
+-------------------------------------------------------------------
+local SQUISH_ID = Shared.SQUISH_SOUND ~= "rbxassetid://0" and Shared.SQUISH_SOUND or "rbxasset://sounds/action_jump_land.mp3"
+local POP_ID = Shared.POP_SOUND ~= "rbxassetid://0" and Shared.POP_SOUND or "rbxasset://sounds/electronicpingshort.wav"
+local function playAt(parent, id, speed, vol)
+	local snd = Instance.new("Sound")
+	snd.SoundId = id
+	snd.PlaybackSpeed = speed
+	snd.Volume = vol
+	snd.RollOffMaxDistance = 80
+	snd.Parent = parent
+	snd:Play()
+	snd.Ended:Connect(function()
+		snd:Destroy()
+	end)
+	task.delay(3, function()
+		if snd.Parent then
+			snd:Destroy()
+		end
+	end)
+end
+local function squishSound(model)
+	local body = model:FindFirstChild("Body") or model.PrimaryPart
+	if body then
+		-- 클수록 낮고 묵직한 소리, 매번 살짝 다른 높이
+		local size = body.Size.Magnitude
+		local speed = math.clamp(1.6 - size * 0.05, 0.55, 1.5) * (0.9 + math.random() * 0.25)
+		playAt(body, SQUISH_ID, speed, 0.8)
 	end
 end
 
@@ -704,6 +808,7 @@ local function showGacha(id, isNew)
 	end
 	capsule.Rotation = 0
 	-- 펑! 열리면서 말랑이 색으로
+	playAt(gui, POP_ID, 1, 0.9)
 	capsuleTop.Visible = false
 	capsule.BackgroundColor3 = def.color
 	TweenService:Create(capsule, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(220, 190) }):Play()
@@ -746,6 +851,7 @@ local comboClear = 0
 remote.OnClientEvent:Connect(function(action, a, b, c)
 	if action == "Squish" then
 		startSquish(a)
+		squishSound(a)
 	elseif action == "Gain" then
 		floatText(c, "+" .. a, b >= 5 and Color3.fromRGB(255, 150, 60) or PINK)
 		comboClear = comboClear + 1

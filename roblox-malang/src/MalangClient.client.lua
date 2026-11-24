@@ -40,6 +40,38 @@ local function startSquish(model)
 	end
 end
 
+-------------------------------------------------------------------
+-- 소리 (업로드한 ID가 없으면 Roblox 기본 소리)
+-------------------------------------------------------------------
+local SQUISH_ID = Shared.SQUISH_SOUND ~= "rbxassetid://0" and Shared.SQUISH_SOUND or "rbxasset://sounds/action_jump_land.mp3"
+local POP_ID = Shared.POP_SOUND ~= "rbxassetid://0" and Shared.POP_SOUND or "rbxasset://sounds/electronicpingshort.wav"
+local function playAt(parent, id, speed, vol)
+	local snd = Instance.new("Sound")
+	snd.SoundId = id
+	snd.PlaybackSpeed = speed
+	snd.Volume = vol
+	snd.RollOffMaxDistance = 80
+	snd.Parent = parent
+	snd:Play()
+	snd.Ended:Connect(function()
+		snd:Destroy()
+	end)
+	task.delay(3, function()
+		if snd.Parent then
+			snd:Destroy()
+		end
+	end)
+end
+local function squishSound(model)
+	local body = model:FindFirstChild("Body") or model.PrimaryPart
+	if body then
+		-- 클수록 낮고 묵직한 소리, 매번 살짝 다른 높이
+		local size = body.Size.Magnitude
+		local speed = math.clamp(1.6 - size * 0.05, 0.55, 1.5) * (0.9 + math.random() * 0.25)
+		playAt(body, SQUISH_ID, speed, 0.8)
+	end
+end
+
 local UP = Vector3.new(0, 1, 0)
 RunService.RenderStepped:Connect(function(dt)
 	for model, a in pairs(anims) do
@@ -213,6 +245,7 @@ local function showGacha(id, isNew)
 	end
 	capsule.Rotation = 0
 	-- 펑! 열리면서 말랑이 색으로
+	playAt(gui, POP_ID, 1, 0.9)
 	capsuleTop.Visible = false
 	capsule.BackgroundColor3 = def.color
 	TweenService:Create(capsule, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(220, 190) }):Play()
@@ -255,6 +288,7 @@ local comboClear = 0
 remote.OnClientEvent:Connect(function(action, a, b, c)
 	if action == "Squish" then
 		startSquish(a)
+		squishSound(a)
 	elseif action == "Gain" then
 		floatText(c, "+" .. a, b >= 5 and Color3.fromRGB(255, 150, 60) or PINK)
 		comboClear = comboClear + 1

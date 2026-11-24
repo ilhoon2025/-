@@ -12,20 +12,26 @@ Shared.RARITY = {
 	{ name = "전설", color = Color3.fromRGB(255, 180, 30), weight = 2, pts = 25 },
 }
 
--- shape: 모양 종류 (서버가 이 이름으로 모델을 만듦)
+-- 실제 말랑이 장난감 모양 (shape 이름으로 서버가 모델을 만듦)
 Shared.SQUISHIES = {
-	{ id = "mochi", name = "모찌", rarity = 1, shape = "ball", color = Color3.fromRGB(250, 248, 240) },
-	{ id = "strawberry", name = "딸기모찌", rarity = 1, shape = "leafball", color = Color3.fromRGB(255, 170, 190), leaf = Color3.fromRGB(90, 190, 90) },
-	{ id = "bread", name = "식빵", rarity = 1, shape = "bread", color = Color3.fromRGB(250, 225, 170) },
-	{ id = "pudding", name = "푸딩", rarity = 1, shape = "pudding", color = Color3.fromRGB(255, 225, 110) },
-	{ id = "cloud", name = "구름", rarity = 2, shape = "cloud", color = Color3.fromRGB(240, 248, 255) },
-	{ id = "cat", name = "고양이", rarity = 2, shape = "cat", color = Color3.fromRGB(200, 200, 205) },
-	{ id = "peach", name = "복숭아", rarity = 2, shape = "leafball", color = Color3.fromRGB(255, 200, 170), leaf = Color3.fromRGB(110, 170, 80) },
-	{ id = "jelly", name = "젤리 친구", rarity = 3, shape = "buddy", color = Color3.fromRGB(120, 230, 160), glass = true },
-	{ id = "rainbow", name = "무지개 모찌", rarity = 3, shape = "rainbow", color = Color3.fromRGB(255, 120, 120) },
-	{ id = "gold", name = "황금 모찌", rarity = 4, shape = "ball", color = Color3.fromRGB(255, 200, 50), neon = true },
-	{ id = "space", name = "우주 말랑이", rarity = 4, shape = "space", color = Color3.fromRGB(120, 70, 220), neon = true },
+	{ id = "mochi", name = "찹쌀떡 모찌", rarity = 1, shape = "mochi", color = Color3.fromRGB(250, 248, 242) },
+	{ id = "tofu", name = "두부 말랑이", rarity = 1, shape = "tofu", color = Color3.fromRGB(248, 246, 236) },
+	{ id = "bread", name = "식빵 말랑이", rarity = 1, shape = "bread", color = Color3.fromRGB(250, 232, 190) },
+	{ id = "egg", name = "계란후라이 말랑이", rarity = 1, shape = "egg", color = Color3.fromRGB(255, 255, 250) },
+	{ id = "macaron", name = "마카롱 말랑이", rarity = 2, shape = "macaron", color = Color3.fromRGB(255, 185, 205) },
+	{ id = "cheese", name = "치즈 말랑이", rarity = 2, shape = "cheese", color = Color3.fromRGB(255, 215, 90) },
+	{ id = "jelly", name = "젤리 큐브", rarity = 2, shape = "jelly", color = Color3.fromRGB(120, 220, 170) },
+	{ id = "fishbread", name = "붕어빵 말랑이", rarity = 3, shape = "fish", color = Color3.fromRGB(215, 150, 70) },
+	{ id = "meshball", name = "메쉬볼", rarity = 3, shape = "mesh", color = Color3.fromRGB(150, 200, 255) },
+	{ id = "waterball", name = "물방울 말랑이", rarity = 3, shape = "water", color = Color3.fromRGB(180, 230, 255) },
+	{ id = "goldfish", name = "황금 붕어빵", rarity = 4, shape = "fish", color = Color3.fromRGB(255, 200, 50), neon = true },
+	{ id = "glitter", name = "반짝이 슬라임볼", rarity = 4, shape = "glitter", color = Color3.fromRGB(190, 120, 255) },
 }
+
+-- 소리: sounds 폴더의 mp3를 Roblox에 올린 뒤 오디오 ID로 바꾸면 더 말랑한 소리가 나요
+-- (0 이면 Roblox 기본 소리를 대신 씀)
+Shared.SQUISH_SOUND = "rbxassetid://0" -- squish.mp3
+Shared.POP_SOUND = "rbxassetid://0" -- pop.mp3
 
 function Shared.byId(id)
 	for _, s in ipairs(Shared.SQUISHIES) do
