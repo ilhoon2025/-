@@ -31,6 +31,8 @@ Shared.SQUISHIES = {
 -- 소리: sounds 폴더의 mp3를 Roblox에 올린 뒤 오디오 ID로 바꾸면 더 말랑한 소리가 나요
 -- (0 이면 Roblox 기본 소리를 대신 씀)
 Shared.SQUISH_SOUND = "rbxassetid://0" -- squish.mp3
+Shared.SQUISH_SOUND2 = "rbxassetid://0" -- squish2.mp3 (번갈아 나오는 소리)
+Shared.SQUISH_SOUND3 = "rbxassetid://0" -- squish3.mp3
 Shared.POP_SOUND = "rbxassetid://0" -- pop.mp3
 
 function Shared.byId(id)

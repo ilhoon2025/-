@@ -43,7 +43,15 @@ end
 -------------------------------------------------------------------
 -- 소리 (업로드한 ID가 없으면 Roblox 기본 소리)
 -------------------------------------------------------------------
-local SQUISH_ID = Shared.SQUISH_SOUND ~= "rbxassetid://0" and Shared.SQUISH_SOUND or "rbxasset://sounds/action_jump_land.mp3"
+local SQUISH_IDS = {}
+for _, id in ipairs({ Shared.SQUISH_SOUND, Shared.SQUISH_SOUND2, Shared.SQUISH_SOUND3 }) do
+	if id and id ~= "rbxassetid://0" then
+		table.insert(SQUISH_IDS, id)
+	end
+end
+if #SQUISH_IDS == 0 then
+	SQUISH_IDS = { "rbxasset://sounds/action_jump_land.mp3" }
+end
 local POP_ID = Shared.POP_SOUND ~= "rbxassetid://0" and Shared.POP_SOUND or "rbxasset://sounds/electronicpingshort.wav"
 local function playAt(parent, id, speed, vol)
 	local snd = Instance.new("Sound")
@@ -68,7 +76,7 @@ local function squishSound(model)
 		-- 클수록 낮고 묵직한 소리, 매번 살짝 다른 높이
 		local size = body.Size.Magnitude
 		local speed = math.clamp(1.6 - size * 0.05, 0.55, 1.5) * (0.9 + math.random() * 0.25)
-		playAt(body, SQUISH_ID, speed, 0.8)
+		playAt(body, SQUISH_IDS[math.random(1, #SQUISH_IDS)], speed, 0.8)
 	end
 end
 

@@ -20,9 +20,9 @@
 | 전설 (2%) | 황금 붕어빵, 반짝이 슬라임볼 | 25P |
 
 ## 소리
-- 누를 때 "꾸욱… 뽀용" 소리 (말랑이가 클수록 낮은 소리), 뽑기 캡슐이 열릴 때 "뽕" 소리
-- 기본은 Roblox 내장 소리. `sounds/squish.mp3`, `sounds/pop.mp3` 를 Roblox에 오디오로 올린 뒤
-  `MalangShared` 의 `Shared.SQUISH_SOUND`, `Shared.POP_SOUND` 에 ID를 넣으면 진짜 말랑한 소리가 나요.
+- 누를 때 실제 말랑이 같은 "사각·쩍" 소리 3가지가 번갈아 나옴 (말랑이가 클수록 낮게), 뽑기 캡슐이 열릴 때 "뽕" 소리
+- 기본은 Roblox 내장 소리. `sounds` 폴더의 squish.mp3·squish2.mp3·squish3.mp3·pop.mp3 를 Roblox에 오디오로 올린 뒤
+  `MalangShared` 의 `SQUISH_SOUND`, `SQUISH_SOUND2`, `SQUISH_SOUND3`, `POP_SOUND` 에 ID를 넣으면 돼요.
 
 ## 파일
 | 파일 | Studio 위치 |
